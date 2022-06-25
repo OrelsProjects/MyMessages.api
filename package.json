@@ -1,0 +1,16 @@
+{
+  "name": "mymessages-api",
+  "version": "1.0.0",
+  "description": "",
+  "dependencies": {
+    "aws-lambda": "^1.0.7",
+    "aws-sdk": "^2.1161.0",
+    "express": "^4.17.1",
+    "serverless-http": "^2.7.0",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "serverless-dynamodb-local": "^0.2.40",
+    "serverless-offline": "^8.8.0"
+  }
+}
