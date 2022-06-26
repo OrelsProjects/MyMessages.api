@@ -1,17 +1,16 @@
 service: mymessages-api
-frameworkVersion: '3'
+frameworkVersion: "3"
 
 custom:
   serverless-offline:
-        httpPort: 4000
-        websocketPort: 4001
-        lambdaPort: 4002
+    httpPort: 4000
+    websocketPort: 4001
+    lambdaPort: 4002
 
 provider:
   name: aws
   runtime: nodejs14.x
   profile: "MyMessages-prod"
-  region: us-east-1
 
   iam:
     role:
@@ -25,13 +24,68 @@ provider:
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
           Resource:
-            - Fn::GetAtt: [ UsersTable, Arn ]
+            - Fn::GetAtt: [UsersTable, Arn]
+
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [PhoneCallsTable, Arn]
+
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [MessagesSentTable, Arn]
+
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [FoldersTable, Arn]
+
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [MessagesTable, Arn]
+            
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt: [MessagesInFoldersTable, Arn]
 
 functions:
   api:
-    handler: handler.handler
+    handler: src/api.handler
     events:
-      - httpApi: '*'
+      - httpApi: "*"
 
 resources:
   Resources:
@@ -39,6 +93,66 @@ resources:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: users
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    PhoneCallsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: phone_calls
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    MessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: messages
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    FoldersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: folders
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    MessagesInFoldersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: messages_in_folders
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    MessagesSentTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: messages_sent
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: id
