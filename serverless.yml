@@ -6,80 +6,22 @@ custom:
     httpPort: 4000
     websocketPort: 4001
     lambdaPort: 4002
+  DB_NAME: mymessagesdbdev
+  USERNAME: ${file(./db_secrets.json):USERNAME}
+  PASSWORD: ${file(./db_secrets.json):PASSWORD}
+  POSTGRESQL:
+    HOST:
+      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Address]
+    PORT:
+      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Port]
 
 provider:
   name: aws
   runtime: nodejs14.x
-  profile: "MyMessages-prod"
+  profile: "MyMessages-Admin"
 
   iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [UsersTable, Arn]
-
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [PhoneCallsTable, Arn]
-
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [MessagesSentTable, Arn]
-
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [FoldersTable, Arn]
-
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [MessagesTable, Arn]
-            
-        - Effect: Allow
-          Action:
-            - dynamodb:Query
-            - dynamodb:Scan
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:UpdateItem
-            - dynamodb:DeleteItem
-          Resource:
-            - Fn::GetAtt: [MessagesInFoldersTable, Arn]
+    role: LambdaRole
 
 functions:
   api:
@@ -89,77 +31,20 @@ functions:
 
 resources:
   Resources:
-    UsersTable:
-      Type: AWS::DynamoDB::Table
+    LambdaRole: ${file(./resource/LambdaRole.yml)}
+    PostgreSqlRDSInstance:
+      Type: AWS::RDS::DBInstance
       Properties:
-        TableName: users
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
+        MasterUsername: ${self:custom.USERNAME}
+        MasterUserPassword: ${self:custom.PASSWORD}
+        AllocatedStorage: 20
+        DBName: ${self:custom.DB_NAME}
+        DBInstanceClass: db.t3.micro
+        # DBSubnetGroupName:
+        #   Ref: ServerlessSubnetGroup
+        Engine: postgres
+        PubliclyAccessible: true
 
-    PhoneCallsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: phone_calls
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-
-    MessagesTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: messages
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-
-    FoldersTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: folders
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-
-    MessagesInFoldersTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: messages_in_folders
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-
-    MessagesSentTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: messages_sent
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
 
 plugins:
   - serverless-dynamodb-local

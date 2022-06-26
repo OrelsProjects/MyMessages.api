@@ -1,3 +1,19 @@
+# package directories
 node_modules
+
+# local env files
+.env
+.env.*
+
+# Serverless directories
 .serverless
-secrets.json
+
+# Webpack directories
+.webpack
+/build/
+
+# the db secrets
+*_secrets.json
+
+#vscode settings
+.vscode
