@@ -6,7 +6,7 @@ custom:
     httpPort: 4000
     websocketPort: 4001
     lambdaPort: 4002
-  DB_NAME: mymessagesdbdev
+  DB_NAME: ${file(./db_secrets.json):DB_NAME}
   USERNAME: ${file(./db_secrets.json):USERNAME}
   PASSWORD: ${file(./db_secrets.json):PASSWORD}
   POSTGRESQL:
