@@ -1,131 +1,83 @@
 const express = require("express");
 const serverless = require("serverless-http");
 const { v4 } = require('uuid');
-const { Client } = require('pg')
-require('dotenv').config();
-
-
+const { runRequest } = require('./common/request_wrapper');
+const { insert, query, selectAllByUserId } = require('./common/requests');
+const { tables } = require('./common/constants')
 
 const app = express();
-
-const USERS_TABLE = 'users';
-const PHONE_CALLS_TABLE = 'phone_calls';
-const MESSAGES_SENT_TABLE = 'messages_sent';
-const MESSAGES_TABLE = 'messages';
-const FODLERS_TABLE = 'folders';
-const MESSAGES_IN_FOLDERS_TABLE = 'messages_in_folders'
-
-const client = new Client({
-  host: process.env.POSTGRESQL_HOST,
-  port: process.env.POSTGRESQL_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.USERNAME,
-  password: process.env.PASSWORD
-});
-
-/* USERS */
-
-
-// const schema = yup.object().shape({
-//   first_name: yup.string().required(),
-//   last_name: yup.string().required(),
-//   gender: yup.string().required(),
-// });
 
 app.use(express.json());
 
 app.get("/users/:id", async function (req, res) {
-  try {
-    client.connect();
+  runRequest(req, res, async (req, client) => {
     const id = req.params.id;
-    let user = (await client.query(`SELECT * FROM users WHERE id = '${id}'`)).rows;
-    res.json({
-      result: user,
-    })
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Could not create user" });
-  }
+    return (await query(`SELECT * FROM ${tables.users} WHERE id = '${id}'`, client)).rows;
+  });
 });
 
 app.post("/users", async function (req, res) {
-  try {
-    client.connect();
+  runRequest(req, res, async (req, client) => {
     const { first_name, last_name, gender, email, number } = req.body;
     const id = v4();
-    let result = (await insert(
-      USERS_TABLE,
+    await insert(
+      tables.users,
       ['id', 'first_name', 'last_name', 'gender', 'email', 'number'],
-      [id, first_name, last_name, gender, email, number]
-    ));
-    res.json({
-      result,
-      executionDate: ` ${(new Date()).getTime()}`,
-    })
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Could not create user" });
-  }
+      [id, first_name, last_name, gender, email, number],
+      client
+    );
+    return id;
+  });
 });
 
 app.post("/folders", async function (req, res) {
-  try {
-    client.connect();
+  runRequest(req, res, async (req, client) => {
     const { title, position, user_id } = req.body;
     const id = v4();
-    let result = (await client.query(`insert into folders(id, title, times_used, position, user_id)
-    values ('${id}', '${title}', 0, ${position ? position : 0}, '${user_id}')`));
-    res.json({
-      result,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Could not create folder" });
-  }
+    await insert(tables.folders,
+      ['id', 'title', 'times_used', 'position', 'user_id', 'is_active'],
+      [id, title, 0, position ? position : 0, user_id, true],
+      client);
+    return id;
+  });
 });
 
 app.get("/folders/:user_id", async function (req, res) {
-  try {
-    client.connect();
+  runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
-    let result = (await client.query(`SELECT * FROM ${FODLERS_TABLE} WHERE user_id = ${user_id}`)).rows;
-    res.json({
-      result,
-    });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: "Could not create folder" });
-  }
+    return (await selectAllByUserId(tables.folders, user_id, client)).rows;
+  });
 });
 
-/**
- * Inserts [values] into [columns] in [table_name], according
- * to the order of columns and values. ex.: columns[0] = values[0].
- * @param {string} table_name is the name of the table
- * @param {[string]} columns are the columns to insert
- * @param {[string]} values are the values to insert
- * @returns the row inserted.
- */
-const insert = async (table_name, columns, values) => {
-  if (!Array.isArray(columns) || !Array.isArray(values)) {
-    throw Error('columns and values must be arrays');
-  }
-  try {
-    let query = `insert into ${table_name}(`;
-    columns.forEach((column) => query += `${column}, `);
-    query = `${query.substring(0, query.length - 2)})\n`;
-    query += `values (`;
-    values.forEach((value) => query += `'${value}', `);
-    query = `${query.substring(0, query.length - 2)})\n`;
-    console.log(query)
-    let result = await client.query(query);
-    console.log(result);
-    return result;
-  } catch (error) {
-    throw error;
-  }
+app.post("/messages", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { title, short_title, body, folder_id, position, user_id } = req.body;
+    const message_id = v4();
+    const message_in_folder_id = v4();
+    await insert(tables.messages,
+      ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'user_id', 'is_active'],
+      [message_id, title, short_title, body, position ? position : 0, 0, user_id, 'true'],
+      client);
+    await insert(tables.messages_in_folders,
+      ['id', 'message_id', 'folder_id'],
+      [message_in_folder_id, message_id, folder_id],
+      client);
+    return message_id;
+  });
+});
 
-}
+app.get("/messages/:user_id", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { user_id } = req.params;
+    return (await query("select folder_id, message_id, title, short_title, body, position ,times_used from (\n" +
+      "(select folder_id, message_id from messages_in_folders where folder_id in (\n" +
+      `select id from folders where user_id = '${user_id}' and is_active = true\n` +
+      ") and is_active = true) m_f\n" +
+      "join (select * from messages where is_active = true) as m\n" +
+      "on m.id = m_f.message_id\n)", client)).rows;
+  });
+});
+
 
 app.use((req, res, next) => {
   return res.status(404).json({
