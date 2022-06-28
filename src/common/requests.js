@@ -1,4 +1,3 @@
-
 const buildInsertQuest = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');

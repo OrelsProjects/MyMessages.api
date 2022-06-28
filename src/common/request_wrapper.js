@@ -9,13 +9,15 @@ const client = new Client({
   password: process.env.PASSWORD
 });
 
+
 const runRequest = async (req, res, request) => {
   try {
     client.connect();
     const result = await request(req, client);
     res.json({
       result,
-    })
+    });
+    client.end();
   } catch (error) {
     res.status(500).json({ error: "Request failed." });
     console.log(error);
