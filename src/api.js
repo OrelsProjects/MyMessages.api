@@ -114,28 +114,58 @@ app.post("/phoneCall", async function (req, res) {
       tables.phone_calls,
       ['id', 'number', 'user_id', 'start_date', 'end_date', 'contact_name', 'type', 'is_answered', 'is_active'],
       [phone_call_id, number, user_id, toDate(start_date), toDate(end_date), contact_name, type, is_answered, true], client);
-    messages_sent.map((value) => {
-      value['id'] = v4();
-      value['is_active'] = true;
-      value['phone_call_id'] = phone_call_id;
-      value['sent_at'] = toDate(value['sent_at']);
-    });
-    const messagesSentOrder = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
-    const valuesArray = arrayToInsertArray(messagesSentOrder, messages_sent);
-    await insertMultiple(tables.messages_sent, messagesSentOrder, valuesArray, client);
+    prepareMessagesSent(messages_sent, phone_call_id);
+    const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
+    const values_array = arrayToInsertArray(messages_sent_order, messages_sent);
+    await insertMultiple(tables.messages_sent, messages_sent_order, values_array, client);
     return phone_call_id;
   });
 });
 
 app.post("/phoneCalls", async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = req.body;
-    const id = v4();
-    (await insertMultiple(
-      tables.phone_calls,
-      ['id', 'number', 'start_date', 'end_date', 'contact_name', 'number', 'type', 'is_answered', 'is_active'],
-      [id, number, start_date, end_date, contact_name, number, type, is_answered, true], client));
-    return id;
+    const phone_calls = req.body;
+    if (!Array.isArray(phone_calls)) throw Error("Not array exception");
+    const phone_calls_array = [];
+    const messages_sent_array = [];
+    const phone_calls_order = ['id',
+      'number',
+      'user_id',
+      'start_date',
+      'end_date',
+      'contact_name',
+      'type',
+      'is_answered',
+      'is_active'
+    ];
+    const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
+    phone_calls.forEach((phone_call) => {
+      const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = phone_call;
+      const phone_call_id = v4();
+      const start_date_formatted = toDate(start_date);
+      const end_date_formatted = toDate(end_date);
+      phone_calls_array.push(
+        {
+          id: phone_call_id,
+          phone_call_id,
+          number,
+          contact_name,
+          start_date: start_date_formatted,
+          end_date: end_date_formatted,
+          is_answered,
+          type,
+          user_id,
+          is_active: true
+        }
+      );
+      prepareMessagesSent(messages_sent, phone_call_id);
+      messages_sent.forEach((value) => messages_sent_array.push(value));
+    });
+    const phone_calls_values_array = arrayToInsertArray(phone_calls_order, phone_calls_array);
+    const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
+    await insertMultiple(tables.phone_calls, phone_calls_order, phone_calls_values_array, client);
+    await insertMultiple(tables.messages_sent, messages_sent_order, messages_sent_values_array, client);
+    return phone_calls_array.map((value) => value.id);
   });
 });
 
@@ -150,6 +180,15 @@ app.use((req, res, next) => {
     error: "Not Found",
   });
 });
+
+const prepareMessagesSent = (messages_sent, phone_call_id) => {
+  messages_sent.map((value) => {
+    value['id'] = v4();
+    value['is_active'] = true;
+    value['phone_call_id'] = phone_call_id;
+    value['sent_at'] = toDate(value['sent_at']);
+  });
+}
 
 const arrayToInsertArray = (order, values) => {
   if (!Array.isArray(order) || !Array.isArray(values)) {
