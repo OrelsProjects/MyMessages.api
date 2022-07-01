@@ -2,7 +2,7 @@ const express = require("express");
 const serverless = require("serverless-http");
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { insert, query, selectAllByUserId } = require('./common/requests');
+const { insert, insertMultiple, query, selectAllByUserId } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now } = require('./common/utils/date');
 
@@ -10,21 +10,24 @@ const app = express();
 
 app.use(express.json());
 
-app.get("/users/:id", async function (req, res) {
+app.get("/users/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const id = req.params.id;
-    return (await query(`SELECT * FROM ${tables.users} WHERE id = '${id}'`, client)).rows;
+    const { user_id } = req.params;
+    const result = (await query(`SELECT * FROM ${tables.users} WHERE id = '${user_id}'`, client)).rows;
+    if (result.length <= 0) {
+      return null
+    }
+    return result[0];
   });
 });
 
 app.post("/users", async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { first_name, last_name, gender, email, number } = req.body;
-    const id = v4();
+    const { first_name, last_name, gender, email, number, user_id } = req.body;
     await insert(
       tables.users,
       ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'],
-      [id, first_name, last_name, gender, email, number, now()],
+      [user_id, first_name, last_name, gender, email, number, now()],
       client
     );
     return id;
@@ -34,12 +37,20 @@ app.post("/users", async function (req, res) {
 app.post("/folders", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { title, position, user_id } = req.body;
-    const id = v4();
+    const folder_id = v4();
     await insert(tables.folders,
       ['id', 'title', 'times_used', 'position', 'user_id', 'is_active', 'created_at'],
-      [id, title, 0, position ? position : 0, user_id, true, now()],
+      [folder_id, title, 0, position ? position : 0, user_id, true, now()],
       client);
-    return id;
+    return folder_id;
+  });
+});
+
+app.get("/folders/:user_id", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { user_id } = req.params;
+    const result = (await selectAllByUserId(tables.folders, user_id, client)).rows;
+    return result;
   });
 });
 
@@ -63,14 +74,15 @@ app.post("/messages", async function (req, res) {
 app.get("/messages/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
-    return (await query("SELECT folder_id, message_id, title, short_title, body, position ,times_used FROM (\n" +
-      "(SELECT folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n" +
+    return (await query("SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used FROM (\n" +
+      "(SELECT id, folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n" +
       `SELECT id FROM folders WHERE user_id = '${user_id}' and is_active = true\n` +
       ") and is_active = true) m_f\n" +
       "JOIN (SELECT * FROM messages WHERE is_active = true) AS m\n" +
       "ON m.id = m_f.message_id\n)", client)).rows;
   });
 });
+
 
 app.post("/deletedCalls", async function (req, res) {
   runRequest(req, res, async (req, client) => {
@@ -85,14 +97,52 @@ app.post("/deletedCalls", async function (req, res) {
   });
 });
 
+// ToDo: Get today's deleted calls. the rest is useless for the app
 app.get("/deletedCalls/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
-    const result = (await selectAllByUserId(tables.deleted_calls, user_id, client)).rows;
+    const result = (await selectAllByUserId(tables.deleted_calls, user_id, client, false)).rows;
     return result;
   });
 });
 
+app.post("/phoneCall", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = req.body;
+    const phone_call_id = v4();
+    await insert(
+      tables.phone_calls,
+      ['id', 'number', 'user_id', 'start_date', 'end_date', 'contact_name', 'type', 'is_answered', 'is_active'],
+      [phone_call_id, number, user_id, toDate(start_date), toDate(end_date), contact_name, type, is_answered, true], client);
+    messages_sent.map((value) => {
+      value['id'] = v4();
+      value['is_active'] = true;
+      value['phone_call_id'] = phone_call_id;
+      value['sent_at'] = toDate(value['sent_at']);
+    });
+    const messagesSentOrder = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
+    const valuesArray = arrayToInsertArray(messagesSentOrder, messages_sent);
+    await insertMultiple(tables.messages_sent, messagesSentOrder, valuesArray, client);
+    return phone_call_id;
+  });
+});
+
+app.post("/phoneCalls", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = req.body;
+    const id = v4();
+    (await insertMultiple(
+      tables.phone_calls,
+      ['id', 'number', 'start_date', 'end_date', 'contact_name', 'number', 'type', 'is_answered', 'is_active'],
+      [id, number, start_date, end_date, contact_name, number, type, is_answered, true], client));
+    return id;
+  });
+});
+
+app.patch("/messages", async function (req, res) {
+  const { title, short_title, body, folder_id, position, user_id } = req.body;
+
+});
 
 
 app.use((req, res, next) => {
@@ -101,5 +151,20 @@ app.use((req, res, next) => {
   });
 });
 
+const arrayToInsertArray = (order, values) => {
+  if (!Array.isArray(order) || !Array.isArray(values)) {
+    return [];
+  }
+  let arrayOfArrays = [];
+  let array = [];
+  values.forEach((value) => {
+    order.forEach((orderKey) => {
+      array.push(value[orderKey]);
+    });
+    arrayOfArrays.push(array);
+    array = [];
+  });
+  return arrayOfArrays;
+}
 
 module.exports.handler = serverless(app);
