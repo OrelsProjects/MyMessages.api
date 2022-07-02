@@ -46,6 +46,22 @@ app.post("/folders", async function (req, res) {
   });
 });
 
+app.patch("/folders", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { id, title, position, user_id, is_active, times_used } = req.body;
+    await updateWithId(tables.folders,
+      ['id', 'title', 'times_used', 'position', 'is_active'],
+      [id, title, times_used, position ? position : 0, is_active],
+      id,
+      client);
+      await updateWithWhere(tables.messages_in_folders,
+        ['is_active'],
+        [is_active],
+        `WHERE folder_id = '${id}'`,
+        client);
+  });
+});
+
 app.get("/folders/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
@@ -79,10 +95,10 @@ app.patch("/messages", async function (req, res) {
       [id, title, short_title, body, position ? position : 0, times_used, is_active],
       id,
       client);
-      
+
     await updateWithWhere(tables.messages_in_folders,
-      ['message_id', 'folder_id'],
-      [id, folder_id],
+      ['message_id', 'folder_id', 'is_active'],
+      [id, folder_id, is_active],
       `WHERE folder_id = '${previous_folder_id}' AND message_id = '${id}'`,
       client);
   });
