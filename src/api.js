@@ -162,9 +162,14 @@ app.post("/phoneCalls", async function (req, res) {
       messages_sent.forEach((value) => messages_sent_array.push(value));
     });
     const phone_calls_values_array = arrayToInsertArray(phone_calls_order, phone_calls_array);
+    console.log(phone_calls_values_array);
     const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
-    await insertMultiple(tables.phone_calls, phone_calls_order, phone_calls_values_array, client);
-    await insertMultiple(tables.messages_sent, messages_sent_order, messages_sent_values_array, client);
+    if (phone_calls_values_array.length > 0) {
+      await insertMultiple(tables.phone_calls, phone_calls_order, phone_calls_values_array, client);
+    }
+    if (messages_sent_values_array > 0) {
+      await insertMultiple(tables.messages_sent, messages_sent_order, messages_sent_values_array, client);
+    }
     return phone_calls_array.map((value) => value.id);
   });
 });
