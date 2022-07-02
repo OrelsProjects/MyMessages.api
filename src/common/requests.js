@@ -15,6 +15,9 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');
     }
+    if (columns.length == 0 || values.length == 0) {
+        return '';
+    }
     let query = `insert into ${table_name}(`;
     columns.forEach((column) => query += `${column}, `);
     query = `${query.substring(0, query.length - 2)})\n values`;
@@ -26,6 +29,7 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
         query = (query.substring(0, query.length - 2) + `),\n`);
     });
     query = `${query.substring(0, query.length - 2)}\n`;
+    console.log(query);
     return query;
 }
 
