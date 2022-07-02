@@ -2,7 +2,7 @@ const express = require("express");
 const serverless = require("serverless-http");
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { insert, insertMultiple, query, selectAllByUserId } = require('./common/requests');
+const { insert, insertMultiple, query, selectAllByUserId, updateWithId, updateWithWhere } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now } = require('./common/utils/date');
 
@@ -64,10 +64,27 @@ app.post("/messages", async function (req, res) {
       [message_id, title, short_title, body, position ? position : 0, 0, user_id, 'true', now()],
       client);
     await insert(tables.messages_in_folders,
-      ['id', 'message_id', 'folder_id'],
-      [message_in_folder_id, message_id, folder_id],
+      ['id', 'message_id', 'folder_id', 'create_at'],
+      [message_in_folder_id, message_id, folder_id, now()],
       client);
     return message_id;
+  });
+});
+
+app.patch("/messages", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
+    await updateWithId(tables.messages,
+      ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'is_active'],
+      [id, title, short_title, body, position ? position : 0, times_used, is_active],
+      id,
+      client);
+      
+    await updateWithWhere(tables.messages_in_folders,
+      ['message_id', 'folder_id'],
+      [id, folder_id],
+      `WHERE folder_id = '${previous_folder_id}' AND message_id = '${id}'`,
+      client);
   });
 });
 
