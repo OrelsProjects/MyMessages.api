@@ -29,7 +29,6 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
         query = (query.substring(0, query.length - 2) + `),\n`);
     });
     query = `${query.substring(0, query.length - 2)}\n`;
-    console.log(query);
     return query;
 }
 
@@ -44,7 +43,6 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
  */
 const insert = async (table_name, columns, values, client) => {
     const query = buildInsertQuery(table_name, columns, values);
-    console.log(query);
     return client.query(query);
 };
 
