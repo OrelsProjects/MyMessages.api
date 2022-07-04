@@ -145,8 +145,8 @@ app.post("/phoneCall", async function (req, res) {
     const phone_call_id = v4();
     await insert(
       tables.phone_calls,
-      ['id', 'number', 'user_id', 'start_date', 'end_date', 'contact_name', 'type', 'is_answered', 'is_active'],
-      [phone_call_id, number, user_id, toDate(start_date), toDate(end_date), contact_name, type, is_answered, true], client);
+      ['id', 'number', 'user_id', 'start_date', 'end_date', 'contact_name', 'type', 'is_answered', 'is_active', 'created_at'],
+      [phone_call_id, number, user_id, toDate(start_date), toDate(end_date), contact_name, type, is_answered, true, now()], client);
     prepareMessagesSent(messages_sent, phone_call_id);
     const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
     const values_array = arrayToInsertArray(messages_sent_order, messages_sent);
@@ -169,9 +169,10 @@ app.post("/phoneCalls", async function (req, res) {
       'contact_name',
       'type',
       'is_answered',
-      'is_active'
+      'is_active',
+      'created_at'
     ];
-    const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
+    const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active', 'created_at'];
     phone_calls.forEach((phone_call) => {
       const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = phone_call;
       const phone_call_id = v4();
@@ -188,7 +189,8 @@ app.post("/phoneCalls", async function (req, res) {
           is_answered,
           type,
           user_id,
-          is_active: true
+          is_active: true,
+          created_at: now(),
         }
       );
       prepareMessagesSent(messages_sent, phone_call_id);
@@ -196,8 +198,13 @@ app.post("/phoneCalls", async function (req, res) {
     });
     const phone_calls_values_array = arrayToInsertArray(phone_calls_order, phone_calls_array);
     const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
-    await insertMultiple(tables.phone_calls, phone_calls_order, phone_calls_values_array, client);
-    await insertMultiple(tables.messages_sent, messages_sent_order, messages_sent_values_array, client);
+
+    if (phone_calls_values_array.length > 0) {
+      await insertMultiple(tables.phone_calls, phone_calls_order, phone_calls_values_array, client);
+    }
+    if (messages_sent_values_array.length > 0) {
+      await insertMultiple(tables.messages_sent, messages_sent_order, messages_sent_values_array, client);
+    }
     return phone_calls_array.map((value) => value.id);
   });
 });
@@ -220,6 +227,7 @@ const prepareMessagesSent = (messages_sent, phone_call_id) => {
     value['is_active'] = true;
     value['phone_call_id'] = phone_call_id;
     value['sent_at'] = toDate(value['sent_at']);
+    value['created_at'] = now();
   });
 }
 
