@@ -4,7 +4,7 @@ const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
 const { insert, insertMultiple, query, selectAllByUserId } = require('./common/requests');
 const { tables } = require('./common/constants');
-const { toDate, now } = require('./common/utils/date');
+const { toDate, now, startOfDayDate } = require('./common/utils/date');
 
 const app = express();
 
@@ -101,7 +101,7 @@ app.post("/deletedCalls", async function (req, res) {
 app.get("/deletedCalls/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
-    const result = (await selectAllByUserId(tables.deleted_calls, user_id, client, false)).rows;
+    const result = (await selectAllByUserId(tables.deleted_calls, user_id, client, false, `deleted_at > '${startOfDayDate()}'`)).rows;
     return result;
   });
 });

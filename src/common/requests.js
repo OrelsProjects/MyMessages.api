@@ -90,8 +90,10 @@ const query = async (query, client) => {
  * @param {string} user_id is the user_id to match.
  * @param {Client} client is the postgres client.
  */
-const selectAllByUserId = async (table, user_id, client, is_active = true) => {
-    return query(`SELECT * FROM ${table} WHERE user_id = '${user_id}' ${is_active ? `AND is_active = 'true'` : ''}`, client);
+const selectAllByUserId = async (table, user_id, client, is_active = true, where = null) => {
+    const selectQuery = `SELECT * FROM ${table} WHERE user_id = '${user_id}' ${is_active ? `AND is_active = 'true'` : ''}` +
+        `${where ? `AND ${where}` : ''}`
+    return query(selectQuery, client);
 }
 
 module.exports = {
