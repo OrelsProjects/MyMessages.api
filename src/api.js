@@ -2,13 +2,14 @@ const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { query, selectAllByUserId, preparedInsertQuery, updateWithId, updateWithWhere } = require('./common/requests');
+const { query, selectAllByUserId, preparedInsertQuery, updateWithId, updateWithWhere, preparedInsertQueryWithConflict } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now, startOfDayDate } = require('./common/utils/date');
 
 const app = express();
 
 app.use(express.json());
+// ToDo make queries anti sql injection
 
 app.get('/users/:user_id', async function (req, res) {
   runRequest(req, res, async (req, client) => {
@@ -26,7 +27,7 @@ app.post('/users', async function (req, res) {
     const { first_name, last_name, gender, email, number } = req.body;
     const id = v4();
     const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'];
-    const users_data = [{id, first_name, last_name, gender, email, number, created_at: now()}];
+    const users_data = [{ id, first_name, last_name, gender, email, number, created_at: now() }];
     const users_data_array = arrayToInsertArray(users_order, users_data);
     await preparedInsertQuery(
       tables.users,
@@ -61,11 +62,11 @@ app.patch("/folders", async function (req, res) {
       [id, title, times_used, position ? position : 0, is_active],
       id,
       client);
-      await updateWithWhere(tables.messages_in_folders,
-        ['is_active'],
-        [is_active],
-        `WHERE folder_id = '${id}'`,
-        client);
+    await updateWithWhere(tables.messages_in_folders,
+      ['is_active'],
+      [is_active],
+      `WHERE folder_id = '${id}'`,
+      client);
   });
 });
 
@@ -90,9 +91,9 @@ app.post('/messages', async function (req, res) {
       message_order,
       message_data_array,
       client);
-      const message_in_folder_order = ['id', 'message_id', 'folder_id'];
-      const message_in_folder_data = [{id: message_in_folder_id, message_id, folder_id}];
-      const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
+    const message_in_folder_order = ['id', 'message_id', 'folder_id'];
+    const message_in_folder_data = [{ id: message_in_folder_id, message_id, folder_id }];
+    const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
     await preparedInsertQuery(
       tables.messages_in_folders,
       message_in_folder_order,
@@ -138,7 +139,7 @@ app.post('/deletedCalls', async function (req, res) {
     const id = v4();
     const deleted_at_date = toDate(deleted_at);
     const deleted_calls_order = ['id', 'user_id', 'deleted_at', 'number'];
-    const deleted_calls_data = [{id, user_id, deleted_at: deleted_at_date, number}];
+    const deleted_calls_data = [{ id, user_id, deleted_at: deleted_at_date, number }];
     const deleted_calls_array = arrayToInsertArray(deleted_calls_order, deleted_calls_data);
     await preparedInsertQuery(
       tables.deleted_calls,
@@ -194,19 +195,6 @@ app.post('/phoneCall', async function (req, res) {
   });
 });
 
-// app.patch('/test', async function (req, res) {
-//   runRequest(req, res, async function (req, client) {
-//     try {
-//     const { text } = req.body;
-//     const text_values = arrayToInsertArray(['value', 'new_column'], text);
-//     let result = preparedInsertQuery('test', ['value', 'new_column'], text_values, client, 'value');
-//     return result;
-//     } catch(exception) {
-//       console.log(exception);
-//     }
-//   });
-// });
-
 app.post('/phoneCalls', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const phone_calls = req.body;
@@ -261,11 +249,34 @@ app.post('/phoneCalls', async function (req, res) {
   });
 });
 
-app.patch('/messages', async function (req, res) {
-  const { title, short_title, body, folder_id, position, user_id } = req.body;
-
+app.patch("/settings", async function (req, res) {
+  runRequest(req, res, async function (req, client) {
+    const { key, value, user_id } = req.body;
+    const modified_at = now();
+    const order = ['key', 'value', 'user_id', 'modified_at'];
+    const data = [{ key, value, user_id, modified_at }];
+    const data_array = arrayToInsertArray(order, data);
+    const result = preparedInsertQueryWithConflict(
+      tables.settings,
+      order,
+      data_array,
+      client,
+      null,
+      '(key, user_id)',
+      `value = $2, modified_at = $4`);
+    return result;
+  });
 });
 
+app.get("/settings/:user_id/:key?", async function (req, res) {
+  runRequest(req, res, async function (req, client) {
+    const { user_id, key } = req.params;
+    let selectQuery = `SELECT * FROM ${tables.settings} WHERE user_id = '${user_id}' ${key ? `AND key = '${key}'` : ''}`
+    const results = (await query(selectQuery, client)).rows;
+    return results;
+
+  });
+});
 
 app.use((req, res, next) => {
   return res.status(404).json({
