@@ -1,3 +1,5 @@
+const { v4 } = require("uuid");
+
 const buildInsertQuery = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');
@@ -14,6 +16,9 @@ const buildInsertQuery = (table_name, columns, values) => {
 const buildInsertMultipleQuery = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');
+    }
+    if (columns.length == 0 || values.length == 0) {
+        return '';
     }
     let query = `insert into ${table_name}(`;
     columns.forEach((column) => query += `${column}, `);
@@ -141,9 +146,45 @@ const query = async (query, client) => {
  * @param {string} user_id is the user_id to match.
  * @param {Client} client is the postgres client.
  */
-const selectAllByUserId = async (table, user_id, client, is_active = true) => {
-    return query(`SELECT * FROM ${table} WHERE user_id = '${user_id}' ${is_active ? `AND is_active = 'true'` : ''}`, client);
-};
+const selectAllByUserId = async (table, user_id, client, is_active = true, where = null) => {
+    const selectQuery = `SELECT * FROM ${table} WHERE user_id = '${user_id}' ${is_active ? `AND is_active = 'true'` : ''}` +
+        `${where ? `AND ${where}` : ''}`
+    return query(selectQuery, client);
+}
+
+const preparedInsertQuery = async (table_name, columns, values, client, return_column) => {
+    const config = buildInsertQueryConfig(table_name, columns, values, return_column);
+    console.log(config);
+    let results = []
+    for (let i = 0; i < config.values.length; i += 1) {
+        let result = (await client.query(config.query,  config.values[i])).rows;
+        if (result?.length > 0) {
+            if (return_column != null) {
+                results.push(result[0][return_column]);
+            } else {
+                results.push(result[0]);
+            }
+        }
+    }
+    return results;
+}
+
+const buildInsertQueryConfig = (table_name, columns, values, return_column) => {
+    if (!Array.isArray(columns) || !Array.isArray(values)) {
+        throw Error('columns and values must be arrays');
+    }
+    let config = {};
+    let query = `insert into ${table_name}(`;
+    columns.forEach((column) => query += `${column}, `);
+    query = `${query.substring(0, query.length - 2)})`;
+    query += ` values(`;
+    let k = 1;
+    columns.forEach(() => query += `$${k++}, `);
+    query = `${query.substring(0, query.length - 2)})  RETURNING ${return_column ? return_column : '*'}`;
+    config.query = query;
+    config.values = values
+    return config;
+}
 
 module.exports = {
     insert,
@@ -151,5 +192,6 @@ module.exports = {
     updateWithId,
     updateWithWhere,
     query,
-    selectAllByUserId
+    selectAllByUserId,
+    preparedInsertQuery
 };

@@ -15,7 +15,14 @@ const toDate = (epochTime) => {
 
 const now = () => toDate((new Date()).getTime());
 
+const startOfDayDate = () => {
+    let date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    return toDate(date.getTime())
+}
+
 module.exports = {
     toDate,
     now,
+    startOfDayDate
 }
