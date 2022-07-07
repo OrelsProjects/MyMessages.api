@@ -2,7 +2,7 @@ const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { query, selectAllByUserId, preparedInsertQuery } = require('./common/requests');
+const { query, selectAllByUserId, preparedInsertQuery, updateWithId, updateWithWhere } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now, startOfDayDate } = require('./common/utils/date');
 
@@ -25,10 +25,13 @@ app.post('/users', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { first_name, last_name, gender, email, number } = req.body;
     const id = v4();
+    const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'];
+    const users_data = [{id, first_name, last_name, gender, email, number, created_at: now()}];
+    const users_data_array = arrayToInsertArray(users_order, users_data);
     await preparedInsertQuery(
       tables.users,
-      ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'],
-      [id, first_name, last_name, gender, email, number, now()],
+      users_order,
+      users_data_array,
       client, 'id'
     );
     return id;
@@ -176,7 +179,6 @@ app.post('/phoneCall', async function (req, res) {
       phone_call_insert_order,
       phone_call_data
     );
-    console.log(phone_call_values);
     await preparedInsertQuery(
       tables.phone_calls,
       phone_call_insert_order,
@@ -289,8 +291,6 @@ const arrayToInsertArray = (order, values) => {
   let array = [];
   values.forEach((value) => {
     order.forEach((orderKey) => {
-      console.log(orderKey);
-      console.log(value[orderKey]);
       array.push(value[orderKey]);
     });
     arrayOfArrays.push(array);

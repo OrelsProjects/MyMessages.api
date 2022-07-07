@@ -154,7 +154,6 @@ const selectAllByUserId = async (table, user_id, client, is_active = true, where
 
 const preparedInsertQuery = async (table_name, columns, values, client, return_column) => {
     const config = buildInsertQueryConfig(table_name, columns, values, return_column);
-    console.log(config);
     let results = []
     for (let i = 0; i < config.values.length; i += 1) {
         let result = (await client.query(config.query,  config.values[i])).rows;
