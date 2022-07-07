@@ -2,7 +2,7 @@ const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { query, selectAllByUserId, preparedInsertQuery } = require('./common/requests');
+const { query, selectAllByUserId, preparedInsertQuery, updateWithId, updateWithWhere } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now, startOfDayDate } = require('./common/utils/date');
 
@@ -25,10 +25,13 @@ app.post('/users', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { first_name, last_name, gender, email, number } = req.body;
     const id = v4();
+    const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'];
+    const users_data = [{id, first_name, last_name, gender, email, number, created_at: now()}];
+    const users_data_array = arrayToInsertArray(users_order, users_data);
     await preparedInsertQuery(
       tables.users,
-      ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'],
-      [id, first_name, last_name, gender, email, number, now()],
+      users_order,
+      users_data_array,
       client, 'id'
     );
     return id;
@@ -50,7 +53,23 @@ app.post('/folders', async function (req, res) {
   });
 });
 
-app.get('/folders/:user_id', async function (req, res) {
+app.patch("/folders", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { id, title, position, user_id, is_active, times_used } = req.body;
+    await updateWithId(tables.folders,
+      ['id', 'title', 'times_used', 'position', 'is_active'],
+      [id, title, times_used, position ? position : 0, is_active],
+      id,
+      client);
+      await updateWithWhere(tables.messages_in_folders,
+        ['is_active'],
+        [is_active],
+        `WHERE folder_id = '${id}'`,
+        client);
+  });
+});
+
+app.get("/folders/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
     const result = (await selectAllByUserId(tables.folders, user_id, client)).rows;
@@ -83,7 +102,24 @@ app.post('/messages', async function (req, res) {
   });
 });
 
-app.get('/messages/:user_id', async function (req, res) {
+app.patch("/messages", async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
+    await updateWithId(tables.messages,
+      ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'is_active'],
+      [id, title, short_title, body, position ? position : 0, times_used, is_active],
+      id,
+      client);
+
+    await updateWithWhere(tables.messages_in_folders,
+      ['message_id', 'folder_id', 'is_active'],
+      [id, folder_id, is_active],
+      `WHERE folder_id = '${previous_folder_id}' AND message_id = '${id}'`,
+      client);
+  });
+});
+
+app.get("/messages/:user_id", async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
     return (await query('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used FROM (\n' +
@@ -143,7 +179,6 @@ app.post('/phoneCall', async function (req, res) {
       phone_call_insert_order,
       phone_call_data
     );
-    console.log(phone_call_values);
     await preparedInsertQuery(
       tables.phone_calls,
       phone_call_insert_order,
@@ -256,8 +291,6 @@ const arrayToInsertArray = (order, values) => {
   let array = [];
   values.forEach((value) => {
     order.forEach((orderKey) => {
-      console.log(orderKey);
-      console.log(value[orderKey]);
       array.push(value[orderKey]);
     });
     arrayOfArrays.push(array);

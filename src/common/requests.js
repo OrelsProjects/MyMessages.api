@@ -11,7 +11,7 @@ const buildInsertQuery = (table_name, columns, values) => {
     values.forEach((value) => query += `'${value}', `);
     query = `${query.substring(0, query.length - 2)})\n`;
     return query;
-}
+};
 
 const buildInsertMultipleQuery = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
@@ -32,6 +32,30 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
     });
     query = `${query.substring(0, query.length - 2)}\n`;
     return query;
+};
+
+const buildUpdateQuery = (table_name, columns, values) => {
+    if (!Array.isArray(columns) || !Array.isArray(values)) {
+        throw Error('columns and values must be arrays');
+    }
+    let query = `UPDATE ${table_name} \n SET `;
+    for (let i = 0; i < columns.length; i += 1) {
+        query += `${columns[i]} = '${values[i]}', `;
+    }
+    query = query.substring(0, query.length - 2);
+    return query;
+};
+
+const buildUpdateQueryWithId = (table_name, columns, values, id) => {
+    let query = buildUpdateQuery(table_name, columns, values);
+    query += `\n WHERE id = '${id}'`;
+    return query;
+}
+
+const buildUpdateQueryWithWhere = (table_name, columns, values, where = '') => {
+    let query = buildUpdateQuery(table_name, columns, values);
+    query += `\n ${where}`;
+    return query;
 }
 
 /**
@@ -45,6 +69,36 @@ const buildInsertMultipleQuery = (table_name, columns, values) => {
  */
 const insert = async (table_name, columns, values, client) => {
     const query = buildInsertQuery(table_name, columns, values);
+    return client.query(query);
+};
+
+/**
+ * Updates [columns] in [table_name] with [values], using a where clause
+ * id = [id], according to the order of columns and values. ex.: columns[0] = values[0].
+ * @param {string} table_name is the name of the table.
+ * @param {[string]} columns are the columns to insert.
+ * @param {[string]} values are the values to insert.
+ * @param {string} where is the where clause in the query.
+ * @param {Client} client is the postgres client.
+ * @returns the row inserted.
+ */
+const updateWithId = async (table_name, columns, values, id, client) => {
+    const query = buildUpdateQueryWithId(table_name, columns, values, id);
+    return client.query(query);
+};
+
+/**
+ * Updates [columns] in [table_name] with [values], using a [where] clause
+ * according to the order of columns and values. ex.: columns[0] = values[0].
+ * @param {string} table_name is the name of the table.
+ * @param {[string]} columns are the columns to insert.
+ * @param {[string]} values are the values to insert.
+ * @param {string} where is the where clause in the query.
+ * @param {Client} client is the postgres client.
+ * @returns the row inserted.
+ */
+const updateWithWhere = async (table_name, columns, values, where, client) => {
+    const query = buildUpdateQueryWithWhere(table_name, columns, values, where);
     return client.query(query);
 };
 
@@ -100,7 +154,6 @@ const selectAllByUserId = async (table, user_id, client, is_active = true, where
 
 const preparedInsertQuery = async (table_name, columns, values, client, return_column) => {
     const config = buildInsertQueryConfig(table_name, columns, values, return_column);
-    console.log(config);
     let results = []
     for (let i = 0; i < config.values.length; i += 1) {
         let result = (await client.query(config.query,  config.values[i])).rows;
@@ -135,6 +188,8 @@ const buildInsertQueryConfig = (table_name, columns, values, return_column) => {
 module.exports = {
     insert,
     insertMultiple,
+    updateWithId,
+    updateWithWhere,
     query,
     selectAllByUserId,
     preparedInsertQuery

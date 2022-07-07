@@ -16,7 +16,7 @@ const runRequest = async (req, res, request) => {
   pool.connect(async function (err, client, done) {
     try {
       const result = await request(req, client);
-      res.json({
+      res.status(200).json({
         body: result,
       });
     } catch (error) {
