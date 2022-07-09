@@ -2,9 +2,10 @@ const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
 const { runRequest } = require('./common/request_wrapper');
-const { query, selectAllByUserId, preparedInsertQuery, updateWithId, updateWithWhere, preparedInsertQueryWithConflict } = require('./common/requests');
+const { query, selectAllByUserId, insert, updateWithId, updateWithWhere } = require('./common/requests');
 const { tables } = require('./common/constants');
 const { toDate, now, startOfDayDate } = require('./common/utils/date');
+const { onConflict } = require('./common/utils/query');
 
 const app = express();
 
@@ -29,7 +30,7 @@ app.post('/users', async function (req, res) {
     const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'];
     const users_data = [{ id, first_name, last_name, gender, email, number, created_at: now() }];
     const users_data_array = arrayToInsertArray(users_order, users_data);
-    await preparedInsertQuery(
+    await insert(
       tables.users,
       users_order,
       users_data_array,
@@ -46,7 +47,7 @@ app.post('/folders', async function (req, res) {
     const folder_order = ['id', 'title', 'times_used', 'position', 'user_id', 'is_active', 'created_at'];
     const folder_data = [{ id: folder_id, title, times_used: 0, position: position ? position : 0, user_id, is_active: true, created_at: now() }];
     const folder_data_array = arrayToInsertArray(folder_order, folder_data);
-    await preparedInsertQuery(tables.folders,
+    await insert(tables.folders,
       folder_order,
       folder_data_array,
       client, 'id');
@@ -86,7 +87,7 @@ app.post('/messages', async function (req, res) {
     const message_data = [{ id: message_id, title, short_title, body, position: position ? position : 0, times_used: 0, user_id, is_active: 'true', created_at: now() }];
     const message_order = ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'user_id', 'is_active', 'created_at'];
     const message_data_array = arrayToInsertArray(message_order, message_data);
-    await preparedInsertQuery(
+    await insert(
       tables.messages,
       message_order,
       message_data_array,
@@ -94,7 +95,7 @@ app.post('/messages', async function (req, res) {
     const message_in_folder_order = ['id', 'message_id', 'folder_id'];
     const message_in_folder_data = [{ id: message_in_folder_id, message_id, folder_id }];
     const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
-    await preparedInsertQuery(
+    await insert(
       tables.messages_in_folders,
       message_in_folder_order,
       message_in_folder_array,
@@ -141,7 +142,7 @@ app.post('/deletedCalls', async function (req, res) {
     const deleted_calls_order = ['id', 'user_id', 'deleted_at', 'number'];
     const deleted_calls_data = [{ id, user_id, deleted_at: deleted_at_date, number }];
     const deleted_calls_array = arrayToInsertArray(deleted_calls_order, deleted_calls_data);
-    await preparedInsertQuery(
+    await insert(
       tables.deleted_calls,
       deleted_calls_order,
       deleted_calls_array,
@@ -180,7 +181,7 @@ app.post('/phoneCall', async function (req, res) {
       phone_call_insert_order,
       phone_call_data
     );
-    await preparedInsertQuery(
+    await insert(
       tables.phone_calls,
       phone_call_insert_order,
       phone_call_values,
@@ -190,7 +191,7 @@ app.post('/phoneCall', async function (req, res) {
     prepareMessagesSent(messages_sent, phone_call_id);
     const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
     const values_array = arrayToInsertArray(messages_sent_order, messages_sent);
-    await preparedInsertQuery(tables.messages_sent, messages_sent_order, values_array, client, 'id');
+    await insert(tables.messages_sent, messages_sent_order, values_array, client, 'id');
     return phone_call_id;
   });
 });
@@ -240,10 +241,10 @@ app.post('/phoneCalls', async function (req, res) {
     const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
 
     if (phone_calls_values_array.length > 0) {
-      await preparedInsertQuery(tables.phone_calls, phone_calls_order, phone_calls_values_array, client, 'id');
+      await insert(tables.phone_calls, phone_calls_order, phone_calls_values_array, client, 'id');
     }
     if (messages_sent_values_array.length > 0) {
-      await preparedInsertQuery(tables.messages_sent, messages_sent_order, messages_sent_values_array, client, 'id');
+      await insert(tables.messages_sent, messages_sent_order, messages_sent_values_array, client, 'id');
     }
     return phone_calls_array.map((value) => value.id);
   });
@@ -256,14 +257,14 @@ app.patch("/settings", async function (req, res) {
     const order = ['key', 'value', 'user_id', 'modified_at'];
     const data = [{ key, value, user_id, modified_at }];
     const data_array = arrayToInsertArray(order, data);
-    const result = preparedInsertQueryWithConflict(
+    const result = insert(
       tables.settings,
       order,
       data_array,
       client,
       null,
-      '(key, user_id)',
-      `value = $2, modified_at = $4`);
+      onConflict.update(order, ['key', 'user_id'], ['value', 'modified_at'])
+      );
     return result;
   });
 });

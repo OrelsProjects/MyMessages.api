@@ -1,5 +1,3 @@
-const { v4 } = require("uuid");
-
 const buildUpdateQuery = (table_name, columns, values) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');
@@ -110,26 +108,24 @@ const preparedInsertQuery = async (table_name, columns, values, client, return_c
  * @param {[string]} columns are the columns to insert.
  * @param {[string]} values are the values to insert.
  * @param {Client} client is the postgres client.
- * @param {(string, string....)} on_conflict_fields are fields that might be conflicted.
  * @param {string = string, string = string} do_on_conflict are the instructions of what to do if a conflict occurred.
  * @returns the row inserted.
  */
-const preparedInsertQueryWithConflict = async (
+const insert = async (
     table_name,
     columns,
     values,
     client,
     return_column,
-    on_conflict_fields,
     do_on_conflict) => {
-    const config = buildInsertQueryConfigWithConflict(
+    const config = buildInsertQueryConfig(
         table_name,
         columns,
         values,
         return_column,
-        on_conflict_fields,
         do_on_conflict
     );
+    console.log(config.query);
     let results = []
     for (let i = 0; i < config.values.length; i += 1) {
         let result = (await client.query(config.query, config.values[i])).rows;
@@ -145,24 +141,24 @@ const preparedInsertQueryWithConflict = async (
 }
 
 
-const buildInsertQueryConfig = (table_name, columns, values, return_column) => {
-    if (!Array.isArray(columns) || !Array.isArray(values)) {
-        throw Error('columns and values must be arrays');
-    }
-    let config = {};
-    let query = `insert into ${table_name}(`;
-    columns.forEach((column) => query += `${column}, `);
-    query = `${query.substring(0, query.length - 2)})`;
-    query += ` values(`;
-    let k = 1;
-    columns.forEach(() => query += `$${k++}, `);
-    query = `${query.substring(0, query.length - 2)})  RETURNING ${return_column ? return_column : '*'}`;
-    config.query = query;
-    config.values = values
-    return config;
-}
+// const buildInsertQueryConfig = (table_name, columns, values, return_column) => {
+//     if (!Array.isArray(columns) || !Array.isArray(values)) {
+//         throw Error('columns and values must be arrays');
+//     }
+//     let config = {};
+//     let query = `insert into ${table_name}(`;
+//     columns.forEach((column) => query += `${column}, `);
+//     query = `${query.substring(0, query.length - 2)})`;
+//     query += ` values(`;
+//     let k = 1;
+//     columns.forEach(() => query += `$${k++}, `);
+//     query = `${query.substring(0, query.length - 2)}) RETURNING ${return_column ? return_column : '*'}`;
+//     config.query = query;
+//     config.values = values
+//     return config;
+// }
 
-const buildInsertQueryConfigWithConflict = (table_name, columns, values, return_column, on_conflict, do_on_conflict) => {
+const buildInsertQueryConfig = (table_name, columns, values, return_column, on_conflict) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {
         throw Error('columns and values must be arrays');
     }
@@ -174,9 +170,8 @@ const buildInsertQueryConfigWithConflict = (table_name, columns, values, return_
     let k = 1;
     columns.forEach(() => query += `$${k++}, `);
     query = `${query.substring(0, query.length - 2)}) `;
-    query += `ON CONFLICT ${on_conflict}`;
-    query += `DO UPDATE SET ${do_on_conflict} RETURNING ${return_column ? return_column : '*'} `;
-    console.log(query);
+    query += `${on_conflict ? on_conflict : ''}`;
+    query += ` RETURNING ${return_column ? return_column : '*'} `;
     config.query = query;
     config.values = values
     return config;
@@ -186,7 +181,8 @@ module.exports = {
     updateWithId,
     updateWithWhere,
     query,
+    insert,
     selectAllByUserId,
     preparedInsertQuery,
-    preparedInsertQueryWithConflict
+    preparedInsertQueryWithConflict: insert
 };
