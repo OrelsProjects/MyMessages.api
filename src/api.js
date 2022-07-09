@@ -287,6 +287,14 @@ app.get("/settings/:user_id/:key?", async function (req, res) {
   });
 });
 
+app.delete("/messagesInFolders", async function (req, res) {
+  runRequest(req, res, async function (req, client) {
+    const { folder_id } = req.body;
+    console.log(folder_id);
+    updateWithWhere(tables.messages_in_folders, ['is_active'], [false], `WHERE folder_id = '${folder_id}'`, client);
+  });
+});
+
 app.use((req, res, next) => {
   return res.status(404).json({
     error: 'Not Found',

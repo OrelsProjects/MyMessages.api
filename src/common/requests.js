@@ -73,33 +73,6 @@ const selectAllByUserId = async (table, user_id, client, is_active = true, where
     return query(selectQuery, client);
 }
 
-
-/**
- * Inserts [values] into [columns] in [table_name], according
- * to the order of columns and values. ex.: columns[0] = values[0].
- * @param {string} table_name is the name of the table.
- * @param {[string]} columns are the columns to insert.
- * @param {[string]} values are the values to insert.
- * @param {Client} client is the postgres client.
- * @returns the row inserted.
- */
-const preparedInsertQuery = async (table_name, columns, values, client, return_column) => {
-    const config = buildInsertQueryConfig(table_name, columns, values, return_column);
-    let results = []
-    for (let i = 0; i < config.values.length; i += 1) {
-        let result = (await client.query(config.query, config.values[i])).rows;
-        if (result?.length > 0) {
-            if (return_column != null) {
-                results.push(result[0][return_column]);
-            } else {
-                results.push(result[0]);
-            }
-        }
-    }
-    return results;
-}
-
-
 /**
  * Inserts [values] into [columns] in [table_name], according
  * to the order of columns and values. ex.: columns[0] = values[0],
@@ -165,6 +138,5 @@ module.exports = {
     query,
     insert,
     selectAllByUserId,
-    preparedInsertQuery,
-    preparedInsertQueryWithConflict: insert
+    insert
 };
