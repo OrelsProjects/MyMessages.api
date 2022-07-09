@@ -34,7 +34,9 @@ app.post('/users', async function (req, res) {
       tables.users,
       users_order,
       users_data_array,
-      client, 'id'
+      client,
+      null,
+      'id'
     );
     return id;
   });
@@ -50,7 +52,9 @@ app.post('/folders', async function (req, res) {
     await insert(tables.folders,
       folder_order,
       folder_data_array,
-      client, 'id');
+      client,
+      null,
+      'id');
     return folder_id;
   });
 });
@@ -146,7 +150,10 @@ app.post('/deletedCalls', async function (req, res) {
       tables.deleted_calls,
       deleted_calls_order,
       deleted_calls_array,
-      client, 'id');
+      client,
+      null,
+      'id'
+    );
     return id;
   });
 });
@@ -186,12 +193,13 @@ app.post('/phoneCall', async function (req, res) {
       phone_call_insert_order,
       phone_call_values,
       client,
+      null,
       'id'
     );
     prepareMessagesSent(messages_sent, phone_call_id);
     const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active'];
     const values_array = arrayToInsertArray(messages_sent_order, messages_sent);
-    await insert(tables.messages_sent, messages_sent_order, values_array, client, 'id');
+    await insert(tables.messages_sent, messages_sent_order, values_array, client, null, 'id');
     return phone_call_id;
   });
 });
@@ -241,10 +249,10 @@ app.post('/phoneCalls', async function (req, res) {
     const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
 
     if (phone_calls_values_array.length > 0) {
-      await insert(tables.phone_calls, phone_calls_order, phone_calls_values_array, client, 'id');
+      await insert(tables.phone_calls, phone_calls_order, phone_calls_values_array, client, null, 'id');
     }
     if (messages_sent_values_array.length > 0) {
-      await insert(tables.messages_sent, messages_sent_order, messages_sent_values_array, client, 'id');
+      await insert(tables.messages_sent, messages_sent_order, messages_sent_values_array, client, null, 'id');
     }
     return phone_calls_array.map((value) => value.id);
   });
@@ -264,7 +272,7 @@ app.patch("/settings", async function (req, res) {
       client,
       onConflict.update(order, ['key', 'user_id'], ['value', 'modified_at']),
       null,
-      );
+    );
     return result;
   });
 });
