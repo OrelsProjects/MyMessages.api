@@ -116,8 +116,9 @@ const insert = async (
     columns,
     values,
     client,
-    return_column,
-    do_on_conflict) => {
+    do_on_conflict,
+    return_column
+) => {
     const config = buildInsertQueryConfig(
         table_name,
         columns,
@@ -125,7 +126,6 @@ const insert = async (
         return_column,
         do_on_conflict
     );
-    console.log(config.query);
     let results = []
     for (let i = 0; i < config.values.length; i += 1) {
         let result = (await client.query(config.query, config.values[i])).rows;
@@ -139,24 +139,6 @@ const insert = async (
     }
     return results;
 }
-
-
-// const buildInsertQueryConfig = (table_name, columns, values, return_column) => {
-//     if (!Array.isArray(columns) || !Array.isArray(values)) {
-//         throw Error('columns and values must be arrays');
-//     }
-//     let config = {};
-//     let query = `insert into ${table_name}(`;
-//     columns.forEach((column) => query += `${column}, `);
-//     query = `${query.substring(0, query.length - 2)})`;
-//     query += ` values(`;
-//     let k = 1;
-//     columns.forEach(() => query += `$${k++}, `);
-//     query = `${query.substring(0, query.length - 2)}) RETURNING ${return_column ? return_column : '*'}`;
-//     config.query = query;
-//     config.values = values
-//     return config;
-// }
 
 const buildInsertQueryConfig = (table_name, columns, values, return_column, on_conflict) => {
     if (!Array.isArray(columns) || !Array.isArray(values)) {

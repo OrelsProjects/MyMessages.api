@@ -262,8 +262,8 @@ app.patch("/settings", async function (req, res) {
       order,
       data_array,
       client,
+      onConflict.update(order, ['key', 'user_id'], ['value', 'modified_at']),
       null,
-      onConflict.update(order, ['key', 'user_id'], ['value', 'modified_at'])
       );
     return result;
   });
