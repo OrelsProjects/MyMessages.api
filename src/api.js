@@ -224,7 +224,16 @@ app.post('/phoneCalls', async function (req, res) {
     ];
     const messages_sent_order = ['sent_at', 'id', 'message_id', 'phone_call_id', 'is_active', 'created_at'];
     phone_calls.forEach((phone_call) => {
-      const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = phone_call;
+      const {
+        number,
+        contact_name,
+        start_date,
+        end_date,
+        is_answered,
+        type,
+        messages_sent,
+        user_id
+      } = phone_call;
       const phone_call_id = v4();
       const start_date_formatted = toDate(start_date);
       const end_date_formatted = toDate(end_date);
@@ -247,12 +256,28 @@ app.post('/phoneCalls', async function (req, res) {
     });
     const phone_calls_values_array = arrayToInsertArray(phone_calls_order, phone_calls_array);
     const messages_sent_values_array = arrayToInsertArray(messages_sent_order, messages_sent_array);
-
     if (phone_calls_values_array.length > 0) {
-      await insert(tables.phone_calls, phone_calls_order, phone_calls_values_array, client, null, 'id');
+      await insert(
+        tables.phone_calls,
+        phone_calls_order,
+        phone_calls_values_array,
+        client,
+        onConflict.doNothing(['start_date', 'user_id']),
+        'id'
+      );
     }
     if (messages_sent_values_array.length > 0) {
-      await insert(tables.messages_sent, messages_sent_order, messages_sent_values_array, client, null, 'id');
+      await insert(
+        tables.messages_sent,
+        messages_sent_order,
+        messages_sent_values_array,
+        client,
+        onConflict.doNothing([
+          'sent_at',
+          'message_id',
+        ]),
+        'id'
+      );
     }
     return phone_calls_array.map((value) => value.id);
   });
@@ -290,7 +315,6 @@ app.get("/settings/:user_id/:key?", async function (req, res) {
 app.delete("/messagesInFolders", async function (req, res) {
   runRequest(req, res, async function (req, client) {
     const { folder_id } = req.body;
-    console.log(folder_id);
     updateWithWhere(tables.messages_in_folders, ['is_active'], [false], `WHERE folder_id = '${folder_id}'`, client);
   });
 });

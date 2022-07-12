@@ -100,13 +100,13 @@ const insert = async (
         do_on_conflict
     );
     let results = []
-    for (let i = 0; i < config.values.length; i += 1) {
-        let result = (await client.query(config.query, config.values[i])).rows;
+    for (const value of config.values) {
+        let result = (await client.query(config.query, value)).rows;
         if (result?.length > 0) {
             if (return_column != null) {
-                results.push(result[0][return_column]);
+                results.push(result[return_column]);
             } else {
-                results.push(result[0]);
+                results.push(result);
             }
         }
     }
@@ -118,17 +118,17 @@ const buildInsertQueryConfig = (table_name, columns, values, return_column, on_c
         throw Error('columns and values must be arrays');
     }
     let config = {};
-    let query = `insert into ${table_name}(`;
+    let query = `INSERT INTO ${table_name}(`;
     columns.forEach((column) => query += `${column}, `);
     query = `${query.substring(0, query.length - 2)})`;
-    query += ` values(`;
+    query += `\nVALUES(`;
     let k = 1;
     columns.forEach(() => query += `$${k++}, `);
     query = `${query.substring(0, query.length - 2)}) `;
-    query += `${on_conflict ? on_conflict : ''}`;
-    query += ` RETURNING ${return_column ? return_column : '*'} `;
+    query += `${on_conflict ? `\n${on_conflict}` : ''}`;
+    query += `\nRETURNING ${return_column ? return_column : '*'} `;
     config.query = query;
-    config.values = values
+    config.values = values;
     return config;
 }
 
