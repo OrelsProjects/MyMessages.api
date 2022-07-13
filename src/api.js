@@ -9,7 +9,7 @@ const { onConflict } = require('./common/utils/query');
 
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 // ToDo make queries anti sql injection
 
 app.get('/users/:user_id', async function (req, res) {
@@ -61,7 +61,7 @@ app.post('/folders', async function (req, res) {
 
 app.patch("/folders", async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { id, title, position, user_id, is_active, times_used } = req.body;
+    const { id, title, position, is_active, times_used } = req.body;
     await updateWithId(tables.folders,
       ['id', 'title', 'times_used', 'position', 'is_active'],
       [id, title, times_used, position ? position : 0, is_active],
@@ -85,26 +85,50 @@ app.get("/folders/:user_id", async function (req, res) {
 
 app.post('/messages', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { title, short_title, body, folder_id, position, user_id } = req.body;
-    const message_id = v4();
-    const message_in_folder_id = v4();
-    const message_data = [{ id: message_id, title, short_title, body, position: position ? position : 0, times_used: 0, user_id, is_active: 'true', created_at: now() }];
-    const message_order = ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'user_id', 'is_active', 'created_at'];
-    const message_data_array = arrayToInsertArray(message_order, message_data);
-    await insert(
-      tables.messages,
-      message_order,
-      message_data_array,
-      client);
-    const message_in_folder_order = ['id', 'message_id', 'folder_id'];
-    const message_in_folder_data = [{ id: message_in_folder_id, message_id, folder_id }];
-    const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
-    await insert(
-      tables.messages_in_folders,
-      message_in_folder_order,
-      message_in_folder_array,
-      client);
-    return message_id;
+    const message_ids = [];
+    let user_id = resolveUserId(req);
+    let { messages } = req.body;
+    if (!Array.isArray(messages)) {
+      const { title, short_title, body, folder_id, position, times_used, user_id } = req.body;
+      messages = [];
+      messages.push({ title, short_title, body, folder_id, position, times_used, user_id });
+    }
+    for (let i = 0; i < messages.length; i += 1) {
+      const message_id = v4();
+      const message_in_folder_id = v4();
+      const message_data = [{
+        id: message_id,
+        title: messages[i].title,
+        short_title: messages[i].short_title,
+        body: messages[i].body,
+        position: messages[i].position ? messages[i].position : 0,
+        times_used: messages[i].times_used ? messages[i].times_used : 0,
+        user_id,
+        is_active: true,
+        created_at: now()
+      }];
+      const message_order = ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'user_id', 'is_active', 'created_at'];
+      const message_data_array = arrayToInsertArray(message_order, message_data);
+      await insert(
+        tables.messages,
+        message_order,
+        message_data_array,
+        client);
+      const message_in_folder_order = ['id', 'message_id', 'folder_id'];
+      const message_in_folder_data = [{
+        id: message_in_folder_id,
+        message_id,
+        folder_id: messages[i].folder_id
+      }];
+      const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
+      await insert(
+        tables.messages_in_folders,
+        message_in_folder_order,
+        message_in_folder_array,
+        client);
+      message_ids.push(message_id);
+    }
+    return message_ids;
   });
 });
 
@@ -350,5 +374,18 @@ const arrayToInsertArray = (order, values) => {
   });
   return arrayOfArrays;
 };
+
+const resolveUserId = (req) => {
+  const { userid } = req.headers;
+  if (!userid) {
+    throw Error("Did you add UserId to the headers?");
+  }
+  const regexExpUUID = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+  if (regexExpUUID.test(userid)) {
+    return userid;
+  } else {
+    throw Error("userId is not a uuid.");
+  }
+}
 
 module.exports.handler = serverless(app);
