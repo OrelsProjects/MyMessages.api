@@ -2,26 +2,44 @@ service: mymessages-api
 frameworkVersion: "3"
 
 custom:
+  myStage: ${opt:stage, self:provider.stage}
+  myProfile:
+    prod: MyMessages-prod
+    dev: MyMessages-dev
+
+  secrets:
+    prod: ${file(secrets_prod.json)}
+    dev: ${file(secrets_dev.json)}
+
   serverless-offline:
     httpPort: 4000
     websocketPort: 4001
     lambdaPort: 4002
-  DB_NAME: ${file(./db_secrets.json):DB_NAME}
-  USERNAME: ${file(./db_secrets.json):USERNAME}
-  PASSWORD: ${file(./db_secrets.json):PASSWORD}
+  DB_NAME: ${file(./secrets_${self:custom.myStage}.json):DB_NAME}
+  USERNAME: ${file(./secrets_${self:custom.myStage}.json):DB_USERNAME}
+  PASSWORD: ${file(./secrets_${self:custom.myStage}.json):DB_PASSWORD}
   POSTGRESQL:
     HOST:
       Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Address]
     PORT:
       Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Port]
+      
 
 provider:
   name: aws
+  stage: dev
   runtime: nodejs14.x
-  profile: "MyMessages-Admin"
+  profile: ${self:custom.myProfile.${self:custom.myStage}}
 
   iam:
     role: LambdaRole
+  
+  environment:
+    DB_NAME: ${self:custom.secrets.${self:custom.myStage}.DB_NAME}
+    DB_USERNAME:  ${self:custom.secrets.${self:custom.myStage}.DB_USERNAME}
+    DB_PASSWORD: ${self:custom.secrets.${self:custom.myStage}.DB_PASSWORD}
+    DB_HOST: ${self:custom.secrets.${self:custom.myStage}.DB_HOST}
+    DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
 
 functions:
   api:

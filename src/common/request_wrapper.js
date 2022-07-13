@@ -3,11 +3,11 @@ const pg = require('pg');
 
 const pool = new pg.Pool(
   {
-    host: process.env.POSTGRESQL_HOST,
-    port: process.env.POSTGRESQL_PORT,
     database: process.env.DB_NAME,
-    user: process.env.USERNAME,
-    password: process.env.PASSWORD
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
   }
 );
 

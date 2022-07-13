@@ -13,7 +13,8 @@ node_modules
 /build/
 
 # the db secrets
-*_secrets.json
+secrets_*.json
+*_secrets*.json
 
 #vscode settings
 .vscode
