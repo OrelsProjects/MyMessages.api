@@ -42,8 +42,8 @@ provider:
     DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
 
 functions:
-  api:
-    handler: src/api.handler
+  data:
+    handler: src/api/api.handler
     events:
       - httpApi: "*"
 

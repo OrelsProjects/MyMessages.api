@@ -19,7 +19,11 @@ const runRequest = async (req, res, request) => {
         body: result,
       });
     } catch (error) {
-      res.status(500).json({ error: "Request failed." });
+      res.status(500).json(
+        {
+          body: null,
+          error: "Request failed."
+        });
       console.log(error);
     } finally {
       done();

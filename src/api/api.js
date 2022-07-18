@@ -1,11 +1,11 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
-const { runRequest } = require('./common/request_wrapper');
-const { query, selectAllByUserId, insert, updateWithId, updateWithWhere } = require('./common/requests');
-const { tables } = require('./common/constants');
-const { toDate, now, startOfDayDate } = require('./common/utils/date');
-const { onConflict } = require('./common/utils/query');
+const { runRequest } = require('../common/request_wrapper');
+const { query, selectAllByUserId, insert, updateWithId, updateWithWhere, querySafe } = require('../common/requests');
+const { tables } = require('../common/constants');
+const { toDate, now, startOfDayDate } = require('../common/utils/date');
+const { onConflict } = require('../common/utils/query');
 
 const app = express();
 
@@ -59,7 +59,7 @@ app.post('/folders', async function (req, res) {
   });
 });
 
-app.patch("/folders", async function (req, res) {
+app.patch('/folders', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { id, title, position, is_active, times_used } = req.body;
     await updateWithId(tables.folders,
@@ -75,7 +75,7 @@ app.patch("/folders", async function (req, res) {
   });
 });
 
-app.get("/folders/:user_id", async function (req, res) {
+app.get('/folders/:user_id', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
     const result = (await selectAllByUserId(tables.folders, user_id, client)).rows;
@@ -118,7 +118,10 @@ app.post('/messages', async function (req, res) {
       const message_in_folder_data = [{
         id: message_in_folder_id,
         message_id,
-        folder_id: messages[i].folder_id
+        folder_id: messages[i].folder_id,
+        is_active: true,
+        created_at: now()
+
       }];
       const message_in_folder_array = arrayToInsertArray(message_in_folder_order, message_in_folder_data);
       await insert(
@@ -132,7 +135,7 @@ app.post('/messages', async function (req, res) {
   });
 });
 
-app.patch("/messages", async function (req, res) {
+app.patch('/messages', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
     await updateWithId(tables.messages,
@@ -149,7 +152,7 @@ app.patch("/messages", async function (req, res) {
   });
 });
 
-app.get("/messages/:user_id", async function (req, res) {
+app.get('/messages/:user_id', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { user_id } = req.params;
     return (await query('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used FROM (\n' +
@@ -229,6 +232,7 @@ app.post('/phoneCall', async function (req, res) {
 });
 
 app.post('/phoneCalls', async function (req, res) {
+  console.log(toDate((new Date()).getTime()))
   runRequest(req, res, async (req, client) => {
     const phone_calls = req.body;
     if (!Array.isArray(phone_calls)) throw Error('Not array exception');
@@ -307,7 +311,7 @@ app.post('/phoneCalls', async function (req, res) {
   });
 });
 
-app.patch("/settings", async function (req, res) {
+app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req, client) {
     const { key, value, user_id } = req.body;
     const modified_at = now();
@@ -326,7 +330,7 @@ app.patch("/settings", async function (req, res) {
   });
 });
 
-app.get("/settings/:user_id/:key?", async function (req, res) {
+app.get('/settings/:user_id/:key?', async function (req, res) {
   runRequest(req, res, async function (req, client) {
     const { user_id, key } = req.params;
     let selectQuery = `SELECT * FROM ${tables.settings} WHERE user_id = '${user_id}' ${key ? `AND key = '${key}'` : ''}`
@@ -336,12 +340,70 @@ app.get("/settings/:user_id/:key?", async function (req, res) {
   });
 });
 
-app.delete("/messagesInFolders", async function (req, res) {
+app.delete('/messagesInFolders', async function (req, res) {
   runRequest(req, res, async function (req, client) {
     const { folder_id } = req.body;
     updateWithWhere(tables.messages_in_folders, ['is_active'], [false], `WHERE folder_id = '${folder_id}'`, client);
   });
 });
+
+
+/* Statistics */
+
+app.get('/statistics/callsCount', async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { userid: user_id } = req.headers;
+    const incoming_query = 'select COUNT(*) '
+      + 'from phone_calls '
+      + 'where type = \'INCOMING\' and user_id = $1';
+
+    const outgoing_query = 'select COUNT(*) '
+      + 'from phone_calls '
+      + 'where type = \'OUTGOING\' and user_id = $1';
+
+    const missed_query = 'select COUNT(*) '
+      + 'from phone_calls '
+      + 'where type = \'MISSED\' and user_id = $1';
+
+    const rejected_query = 'select COUNT(*) '
+      + 'from phone_calls '
+      + 'where type = \'REJECTED\' and user_id = $1';
+
+    const values = [user_id];
+    const incoming_count = await querySafe(incoming_query, values, client);
+    const outgoing_count = await querySafe(outgoing_query, values, client);
+    const missed_count = await querySafe(missed_query, values, client);
+    const rejected_count = await querySafe(rejected_query, values, client);
+
+    return {
+      incoming_count: incoming_count.length > 0 ? incoming_count[0].count : 0,
+      outgoing_count: outgoing_count.length > 0 ? outgoing_count[0].count : 0,
+      missed_count: missed_count.length > 0 ? missed_count[0].count : 0,
+      rejected_count: rejected_count.length > 0 ? rejected_count[0].count : 0,
+    }
+  });
+});
+
+app.get('/statistics/messagesSentCount', async function (req, res) {
+  runRequest(req, res, async (req, client) => {
+    const { userid: user_id } = req.headers;
+    const query = 'select Count( m_ms.title), m_ms.title\n'
+      + 'from (\n'
+      + 'messages_sent\n'
+      + 'join messages\n'
+      + 'on messages_sent.message_id = messages.id\n'
+      + ') as m_ms\n'
+      + 'where user_id = $1\n'
+      + 'group by m_ms.title;'
+    const values = [user_id];
+    const messages_sent_count = await querySafe(query, values, client);
+    if (messages_sent_count.length <= 0) return null
+    return messages_sent_count
+  });
+});
+
+/* Statistics */
+
 
 app.use((req, res, next) => {
   return res.status(404).json({
@@ -378,13 +440,13 @@ const arrayToInsertArray = (order, values) => {
 const resolveUserId = (req) => {
   const { userid } = req.headers;
   if (!userid) {
-    throw Error("Did you add UserId to the headers?");
+    throw Error('Did you add UserId to the headers?');
   }
   const regexExpUUID = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
   if (regexExpUUID.test(userid)) {
     return userid;
   } else {
-    throw Error("userId is not a uuid.");
+    throw Error('userId is not a uuid.');
   }
 }
 

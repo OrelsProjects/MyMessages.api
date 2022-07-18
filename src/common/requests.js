@@ -61,6 +61,11 @@ const query = async (query, client) => {
     return client.query(query);
 };
 
+const querySafe = async(query, values, client) => {
+    let result = (await client.query(query, values)).rows;
+    return result;
+}
+
 /**
  * Returns all the items where user_id == user_id from table.
  * @param {string} table is the table to run the query on.
@@ -136,6 +141,7 @@ module.exports = {
     updateWithId,
     updateWithWhere,
     query,
+    querySafe,
     insert,
     selectAllByUserId,
     insert
