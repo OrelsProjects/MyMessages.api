@@ -14,7 +14,7 @@ app.use(express.json({ limit: '2mb' }));
 
 app.get('/users/:user_id', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { user_id } = req.params;
+    const user_id = resolveUserId(req);
     const result = (await query(`SELECT * FROM ${tables.users} WHERE id = '${user_id}'`, client)).rows;
     if (result.length <= 0) {
       return null
@@ -25,10 +25,11 @@ app.get('/users/:user_id', async function (req, res) {
 
 app.post('/users', async function (req, res) {
   runRequest(req, res, async (req, client) => {
+    const user_id = resolveUserId(req);
     const { first_name, last_name, gender, email, number } = req.body;
-    const id = v4();
-    const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at'];
-    const users_data = [{ id, first_name, last_name, gender, email, number, created_at: now() }];
+    const id = user_id;
+    const users_order = ['id', 'first_name', 'last_name', 'gender', 'email', 'number', 'created_at', 'is_active'];
+    const users_data = [{ id, first_name, last_name, gender, email, number, created_at: now(), is_active: true }];
     const users_data_array = arrayToInsertArray(users_order, users_data);
     await insert(
       tables.users,
@@ -44,7 +45,8 @@ app.post('/users', async function (req, res) {
 
 app.post('/folders', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { title, position, user_id } = req.body;
+    const user_id = resolveUserId(req);
+    const { title, position } = req.body;
     const folder_id = v4();
     const folder_order = ['id', 'title', 'times_used', 'position', 'user_id', 'is_active', 'created_at'];
     const folder_data = [{ id: folder_id, title, times_used: 0, position: position ? position : 0, user_id, is_active: true, created_at: now() }];
@@ -75,9 +77,9 @@ app.patch('/folders', async function (req, res) {
   });
 });
 
-app.get('/folders/:user_id', async function (req, res) {
+app.get('/folders', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { user_id } = req.params;
+    const user_id = resolveUserId(req);
     const result = (await selectAllByUserId(tables.folders, user_id, client)).rows;
     return result;
   });
@@ -143,18 +145,19 @@ app.patch('/messages', async function (req, res) {
       [id, title, short_title, body, position ? position : 0, times_used, is_active],
       id,
       client);
-
-    await updateWithWhere(tables.messages_in_folders,
-      ['message_id', 'folder_id', 'is_active'],
-      [id, folder_id, is_active],
-      `WHERE folder_id = '${previous_folder_id}' AND message_id = '${id}'`,
-      client);
+    if (previous_folder_id && folder_id) {
+      await updateWithWhere(tables.messages_in_folders,
+        ['message_id', 'folder_id', 'is_active'],
+        [id, folder_id, is_active],
+        `WHERE folder_id = '${previous_folder_id}' AND message_id = '${id}'`,
+        client);
+    }
   });
 });
 
-app.get('/messages/:user_id', async function (req, res) {
+app.get('/messages', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { user_id } = req.params;
+    const user_id = resolveUserId(req);
     return (await query('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used FROM (\n' +
       '(SELECT id, folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n' +
       `SELECT id FROM folders WHERE user_id = '${user_id}' and is_active = true\n` +
@@ -167,7 +170,8 @@ app.get('/messages/:user_id', async function (req, res) {
 
 app.post('/deletedCalls', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { user_id, number, deleted_at } = req.body;
+    const user_id = resolveUserId(req);
+    const { number, deleted_at } = req.body;
     const id = v4();
     const deleted_at_date = toDate(deleted_at);
     const deleted_calls_order = ['id', 'user_id', 'deleted_at', 'number'];
@@ -185,9 +189,9 @@ app.post('/deletedCalls', async function (req, res) {
   });
 });
 
-app.get('/deletedCalls/:user_id', async function (req, res) {
+app.get('/deletedCalls', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { user_id } = req.params;
+    const user_id = resolveUserId(req);
     const result = (await selectAllByUserId(tables.deleted_calls, user_id, client, false, `deleted_at > '${startOfDayDate()}'`)).rows;
     return result;
   });
@@ -195,7 +199,8 @@ app.get('/deletedCalls/:user_id', async function (req, res) {
 
 app.post('/phoneCall', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, user_id } = req.body;
+    const user_id = resolveUserId(req);
+    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent } = req.body;
     const phone_call_id = v4();
     const phone_call_insert_order = ['id', 'number', 'user_id', 'start_date', 'end_date', 'contact_name', 'type', 'is_answered', 'is_active', 'created_at'];
     const phone_call_data = [{
@@ -232,9 +237,9 @@ app.post('/phoneCall', async function (req, res) {
 });
 
 app.post('/phoneCalls', async function (req, res) {
-  console.log(toDate((new Date()).getTime()))
   runRequest(req, res, async (req, client) => {
     const phone_calls = req.body;
+    const user_id = resolveUserId(req);
     if (!Array.isArray(phone_calls)) throw Error('Not array exception');
     const phone_calls_array = [];
     const messages_sent_array = [];
@@ -259,8 +264,7 @@ app.post('/phoneCalls', async function (req, res) {
         end_date,
         is_answered,
         type,
-        messages_sent,
-        user_id
+        messages_sent
       } = phone_call;
       const phone_call_id = v4();
       const start_date_formatted = toDate(start_date);
@@ -313,7 +317,8 @@ app.post('/phoneCalls', async function (req, res) {
 
 app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req, client) {
-    const { key, value, user_id } = req.body;
+    const user_id = resolveUserId(req);
+    const { key, value } = req.body;
     const modified_at = now();
     const order = ['key', 'value', 'user_id', 'modified_at'];
     const data = [{ key, value, user_id, modified_at }];
@@ -330,9 +335,10 @@ app.patch('/settings', async function (req, res) {
   });
 });
 
-app.get('/settings/:user_id/:key?', async function (req, res) {
+app.get('/settings/:key?', async function (req, res) {
   runRequest(req, res, async function (req, client) {
-    const { user_id, key } = req.params;
+    const { key } = req.params;
+    const user_id = resolveUserId(req);
     let selectQuery = `SELECT * FROM ${tables.settings} WHERE user_id = '${user_id}' ${key ? `AND key = '${key}'` : ''}`
     const results = (await query(selectQuery, client)).rows;
     return results;
@@ -352,7 +358,7 @@ app.delete('/messagesInFolders', async function (req, res) {
 
 app.get('/statistics/callsCount', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { userid: user_id } = req.headers;
+    const user_id = resolveUserId(req);
     const incoming_query = 'select COUNT(*) '
       + 'from phone_calls '
       + 'where type = \'INCOMING\' and user_id = $1';
@@ -386,7 +392,7 @@ app.get('/statistics/callsCount', async function (req, res) {
 
 app.get('/statistics/messagesSentCount', async function (req, res) {
   runRequest(req, res, async (req, client) => {
-    const { userid: user_id } = req.headers;
+    const user_id = resolveUserId(req);
     const query = 'select Count( m_ms.title), m_ms.title\n'
       + 'from (\n'
       + 'messages_sent\n'
