@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json({ limit: '2mb' }));
 // ToDo make queries anti sql injection
 
-app.get('/users/:user_id', async function (req, res) {
+app.get('/users', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const user_id = resolveUserId(req);
     const result = (await query(`SELECT * FROM ${tables.users} WHERE id = '${user_id}'`, client)).rows;
@@ -141,9 +141,10 @@ app.patch('/messages', async function (req, res) {
   runRequest(req, res, async (req, client) => {
     const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
     await updateWithId(tables.messages,
-      ['id', 'title', 'short_title', 'body', 'position', 'times_used', 'is_active'],
-      [id, title, short_title, body, position ? position : 0, times_used, is_active],
+      ['title', 'short_title', 'body', 'position', 'times_used', 'is_active'],
+      [title, short_title, body, position ? position : 0, times_used, is_active],
       id,
+      'id',
       client);
     if (previous_folder_id && folder_id) {
       await updateWithWhere(tables.messages_in_folders,
