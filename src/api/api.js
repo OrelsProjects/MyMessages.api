@@ -251,14 +251,15 @@ app.post('/phoneCalls', async function (req, res) {
           created_at: now(),
         }
       );
-      prepareMessagesSent(messages_sent, phone_call_id);
-      messages_sent.forEach((value) => messages_sent_array.push(value));
+        prepareMessagesSent(messages_sent, phone_call_id);
+        messages_sent.forEach((value) => messages_sent_array.push(value));
     });
     knex.transaction(function (trx) {
       knex.insert(phone_calls_array)
         .into(tables.phone_calls)
         .transacting(trx)
         .then(async function () {
+          if(messages_sent_array && messages_sent_array.length > 0)
           return knex
             .insert(messages_sent_array)
             .into(tables.messages_sent)
@@ -271,10 +272,9 @@ app.post('/phoneCalls', async function (req, res) {
         const result = phone_calls_array.map((value) => value.id);
         callback(res, result)
       })
-      .catch(function(error) {
+      .catch(function (error) {
         callbackError(res, error);
-      });
-       // transaction
+      });// transaction
   }); // runRequestCallback
 }); // endpoint
 
@@ -311,12 +311,14 @@ app.get('/settings/:key?', async function (req, res) {
   });
 });
 
-app.delete('/messagesInFolders', async function (req, res) {
+app.delete('/messagesInFolders/:folder_id?', async function (req, res) {
   runRequest(req, res, async function (req) {
-    const { folder_id } = req.body;
-    await knex(tables.messages_in_folders).update({
-      'is_active': false
-    }).where('folder_id', folder_id);
+    const { folder_id } = req.params;
+    if (folder_id) {
+      await knex(tables.messages_in_folders).update({
+        'is_active': false
+      }).where('folder_id', folder_id);
+    }
   });
 });
 
