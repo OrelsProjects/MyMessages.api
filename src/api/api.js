@@ -80,7 +80,8 @@ app.get('/folders', async function (req, res) {
     const user_id = resolveUserId(req);
     const result = await knex(tables.folders)
       .select('*')
-      .where('user_id', user_id);
+      .where('user_id', user_id)
+      .where('is_active', true);
     return result;
   });
 });
