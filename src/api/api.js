@@ -1,7 +1,7 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
-const { runRequest } = require('../common/request_wrapper');
+const { runRequest, runRequestCallback } = require('../common/request_wrapper');
 const { tables } = require('../common/constants');
 const { toDate, now, startOfDayDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
@@ -80,7 +80,8 @@ app.get('/folders', async function (req, res) {
     const user_id = resolveUserId(req);
     const result = await knex(tables.folders)
       .select('*')
-      .where('user_id', user_id);
+      .where('user_id', user_id)
+      .where('is_active', true);
     return result;
   });
 });
@@ -118,6 +119,10 @@ app.post('/messages', async function (req, res) {
         created_at: now()
 
       });
+    }
+
+    if (messages_data.length == 0) {
+      return [];
     }
     await knex(tables.messages)
       .insert(messages_data);
@@ -214,7 +219,7 @@ app.post('/phoneCall', async function (req, res) {
 });
 
 app.post('/phoneCalls', async function (req, res) {
-  runRequest(req, res, async (req) => {
+  runRequestCallback(req, res, (req, callback, callbackError) => {
     const phone_calls = req.body;
     const user_id = resolveUserId(req);
     if (!Array.isArray(phone_calls)) throw Error('Not array exception in phoneCalls');
@@ -247,20 +252,32 @@ app.post('/phoneCalls', async function (req, res) {
           created_at: now(),
         }
       );
-      prepareMessagesSent(messages_sent, phone_call_id);
-      messages_sent.forEach((value) => messages_sent_array.push(value));
+        prepareMessagesSent(messages_sent, phone_call_id);
+        messages_sent.forEach((value) => messages_sent_array.push(value));
     });
-
-    await knex(tables.phone_calls)
-      .insert(phone_calls_array)
-      .onConflict(['start_date', 'user_id'])
-      .ignore();
-    await knex(tables.messages_sent)
-      .insert(messages_sent_array)
-
-    return phone_calls_array.map((value) => value.id);
-  });
-});
+    knex.transaction(function (trx) {
+      knex.insert(phone_calls_array)
+        .into(tables.phone_calls)
+        .transacting(trx)
+        .then(async function () {
+          if(messages_sent_array && messages_sent_array.length > 0)
+          return knex
+            .insert(messages_sent_array)
+            .into(tables.messages_sent)
+            .transacting(trx)
+        })
+        .then(trx.commit)
+        .catch(trx.rollback)
+    })
+      .then(function () {
+        const result = phone_calls_array.map((value) => value.id);
+        callback(res, result)
+      })
+      .catch(function (error) {
+        callbackError(res, error);
+      });// transaction
+  }); // runRequestCallback
+}); // endpoint
 
 app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req) {
@@ -295,12 +312,14 @@ app.get('/settings/:key?', async function (req, res) {
   });
 });
 
-app.delete('/messagesInFolders', async function (req, res) {
+app.delete('/messagesInFolders/:folder_id?', async function (req, res) {
   runRequest(req, res, async function (req) {
-    const { folder_id } = req.body;
-    await knex(tables.messages_in_folders).update({
-      'is_active': false
-    }).where('folder_id', folder_id);
+    const { folder_id } = req.params;
+    if (folder_id) {
+      await knex(tables.messages_in_folders).update({
+        'is_active': false
+      }).where('folder_id', folder_id);
+    }
   });
 });
 
