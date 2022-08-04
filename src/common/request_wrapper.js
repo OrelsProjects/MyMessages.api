@@ -16,7 +16,6 @@ const knex = require('knex')({
 });
 
 const runRequest = async (req, res, request) => {
-  // pool.connect(async function (err, client, done) {
   try {
     const result = await request(req);
     console.log(`query result: ${result}, at: ${new Date()}`);
@@ -31,11 +30,47 @@ const runRequest = async (req, res, request) => {
         error: "Request failed."
       });
   }
-  // });
 }
 
+const runRequestCallback = async (req, res, request) => {
+  try {
+    request(req, callback, callbackError);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(
+      {
+        body: null,
+        error: "Request failed."
+      });
+  }
+}
+
+const callbackError = (res, error) => {
+  console.log(error);
+  res.status(500).json(
+    {
+      body: null,
+      error: "Request failed."
+    });
+}
+
+const callback = (res, queryResult) => {
+  try {
+    res.status(200).json({
+      body: queryResult,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(
+      {
+        body: null,
+        error: "Request failed."
+      });
+  }
+}
 
 module.exports = {
   runRequest,
   knex,
+  runRequestCallback,
 };

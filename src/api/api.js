@@ -1,7 +1,7 @@
 const express = require('express');
 const serverless = require('serverless-http');
 const { v4 } = require('uuid');
-const { runRequest } = require('../common/request_wrapper');
+const { runRequest, runRequestCallback } = require('../common/request_wrapper');
 const { tables } = require('../common/constants');
 const { toDate, now, startOfDayDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
@@ -119,6 +119,10 @@ app.post('/messages', async function (req, res) {
 
       });
     }
+
+    if (messages_data.length == 0) {
+      return [];
+    }
     await knex(tables.messages)
       .insert(messages_data);
 
@@ -214,7 +218,7 @@ app.post('/phoneCall', async function (req, res) {
 });
 
 app.post('/phoneCalls', async function (req, res) {
-  runRequest(req, res, async (req) => {
+  runRequestCallback(req, res, (req, callback, callbackError) => {
     const phone_calls = req.body;
     const user_id = resolveUserId(req);
     if (!Array.isArray(phone_calls)) throw Error('Not array exception in phoneCalls');
@@ -250,17 +254,29 @@ app.post('/phoneCalls', async function (req, res) {
       prepareMessagesSent(messages_sent, phone_call_id);
       messages_sent.forEach((value) => messages_sent_array.push(value));
     });
-
-    await knex(tables.phone_calls)
-      .insert(phone_calls_array)
-      .onConflict(['start_date', 'user_id'])
-      .ignore();
-    await knex(tables.messages_sent)
-      .insert(messages_sent_array)
-
-    return phone_calls_array.map((value) => value.id);
-  });
-});
+    knex.transaction(function (trx) {
+      knex.insert(phone_calls_array)
+        .into(tables.phone_calls)
+        .transacting(trx)
+        .then(async function () {
+          return knex
+            .insert(messages_sent_array)
+            .into(tables.messages_sent)
+            .transacting(trx)
+        })
+        .then(trx.commit)
+        .catch(trx.rollback)
+    })
+      .then(function () {
+        const result = phone_calls_array.map((value) => value.id);
+        callback(res, result)
+      })
+      .catch(function(error) {
+        callbackError(res, error);
+      });
+       // transaction
+  }); // runRequestCallback
+}); // endpoint
 
 app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req) {
