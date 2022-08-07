@@ -61,19 +61,21 @@ app.post('/folders', async function (req, res) {
 
 app.patch('/folders', async function (req, res) {
   runRequest(req, res, async (req) => {
+    const user_id = resolveUserId(req);
     const { id, title, position, is_active, times_used } = req.body;
+    const folder_data = { title, position: position ? position : 0, is_active, times_used }
+    const message_in_folder_data = { folder_id: id, is_active, user_id };
     await knex(tables.folders)
-      .update({
-        title,
-        position: position ? position : 0,
-        is_active,
-        times_used
-      })
+      .update(folder_data)
       .where('id', id);
     await knex(tables.messages_in_folders)
       .update({ is_active })
       .where('folder_id', id);
+
+    log(tables.folders, folder_data, knex);
+    log(tables.messages_in_folders, message_in_folder_data, knex);
   });
+
 });
 
 app.get('/folders', async function (req, res) {
@@ -127,9 +129,10 @@ app.post('/messages', async function (req, res) {
     }
     await knex(tables.messages)
       .insert(messages_data);
-    await log(tables.messages, messages_data, knex);
     await knex(tables.messages_in_folders)
       .insert(messages_in_folder_data);
+
+    await log(tables.messages, messages_data, knex);
     await log(tables.messages_in_folders, messages_in_folder_data, knex);
     return messages_data.map((message) => message.id);
   });
@@ -156,6 +159,7 @@ app.patch('/messages', async function (req, res) {
         .where('folder_id', previous_folder_id)
         .andWhere('message_id', id);
       message_in_folder_data.id = id;
+      message_in_folder_data.user_id = user_id;
       await log(tables.messages_in_folders, message_in_folder_data, knex);
     }
     message_data.id = id;
@@ -166,7 +170,6 @@ app.patch('/messages', async function (req, res) {
 
 app.get('/messages', async function (req, res) {
   runRequest(req, res, async (req) => {
-    await log(tables.messages, knex);
     const user_id = resolveUserId(req);
     const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used'
       + ' FROM (\n' +
@@ -301,6 +304,7 @@ app.patch('/settings', async function (req, res) {
         value,
         modified_at
       });
+    await log(tables.settings, data, knex);
   });
 });
 

@@ -1,9 +1,8 @@
 const { tables } = require('../common/constants');
 const { v4 } = require('uuid');
-const { now } = require('../common/utils/date');
 
 const COLUMN_LOG_ID = 'log_id';
-const COLUMN_MODIFIED_AT = 'modified_at';
+const COLUMN_LOGGED_AT = 'logged_at';
 
 const log = async (table, data, db) => {
     const log_table_name = table + tables.log_suffix;
@@ -15,7 +14,7 @@ const log = async (table, data, db) => {
     } else {
         data.log_id = v4();
     }
-    data.modified_at = now();
+
     await db(log_table_name)
         .insert(data)
 }
@@ -26,7 +25,10 @@ const createLogTable = async (log_table_name, table_name, db) => {
     columns = columns?.map((column) => column.column_name);
     await db.schema.createTableLike(log_table_name, table_name, function (t) {
         t.uuid(COLUMN_LOG_ID).notNullable();
-        t.dateTime(COLUMN_MODIFIED_AT).notNullable();
+        t.dateTime(COLUMN_LOGGED_AT, {precision: 6}).notNullable().defaultTo(db.fn.now(6));
+        if(!columns.includes('user_id')) {
+            t.uuid('user_id').notNullable();
+        }
     });
     await db.schema.table(log_table_name, function (t) {
         t.dropPrimary(`${log_table_name}_pkey`);
