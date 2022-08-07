@@ -5,6 +5,7 @@ const { runRequest, runRequestCallback } = require('../common/request_wrapper');
 const { tables } = require('../common/constants');
 const { toDate, now, startOfDayDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
+const { log } = require('../common/log');
 
 const app = express();
 
@@ -126,38 +127,46 @@ app.post('/messages', async function (req, res) {
     }
     await knex(tables.messages)
       .insert(messages_data);
-
+    await log(tables.messages, messages_data, knex);
     await knex(tables.messages_in_folders)
       .insert(messages_in_folder_data);
-
+    await log(tables.messages_in_folders, messages_in_folder_data, knex);
     return messages_data.map((message) => message.id);
   });
 });
 
 app.patch('/messages', async function (req, res) {
   runRequest(req, res, async (req) => {
+    const user_id = resolveUserId(req);
     const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
+    const message_data = { title, short_title, body, position, times_used, is_active };
     await knex(tables.messages)
       .update(
-        { title, short_title, body, position, times_used, is_active }
+        message_data
       )
       .where('id', id);
-
+    const message_in_folder_data = {
+      message_id: id,
+      folder_id,
+      is_active
+    };
     if (previous_folder_id && folder_id) {
       await knex(tables.messages_in_folders)
-        .update({
-          message_id: id,
-          folder_id,
-          is_active
-        })
+        .update(message_in_folder_data)
         .where('folder_id', previous_folder_id)
         .andWhere('message_id', id);
+      message_in_folder_data.id = id;
+      await log(tables.messages_in_folders, message_in_folder_data, knex);
     }
+    message_data.id = id;
+    message_data.user_id = user_id;
+    await log(tables.messages, message_data, knex);
   });
 });
 
 app.get('/messages', async function (req, res) {
   runRequest(req, res, async (req) => {
+    await log(tables.messages, knex);
     const user_id = resolveUserId(req);
     const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used'
       + ' FROM (\n' +
@@ -252,19 +261,19 @@ app.post('/phoneCalls', async function (req, res) {
           created_at: now(),
         }
       );
-        prepareMessagesSent(messages_sent, phone_call_id);
-        messages_sent.forEach((value) => messages_sent_array.push(value));
+      prepareMessagesSent(messages_sent, phone_call_id);
+      messages_sent.forEach((value) => messages_sent_array.push(value));
     });
     knex.transaction(function (trx) {
       knex.insert(phone_calls_array)
         .into(tables.phone_calls)
         .transacting(trx)
         .then(async function () {
-          if(messages_sent_array && messages_sent_array.length > 0)
-          return knex
-            .insert(messages_sent_array)
-            .into(tables.messages_sent)
-            .transacting(trx)
+          if (messages_sent_array && messages_sent_array.length > 0)
+            return knex
+              .insert(messages_sent_array)
+              .into(tables.messages_sent)
+              .transacting(trx)
         })
         .then(trx.commit)
         .catch(trx.rollback)
