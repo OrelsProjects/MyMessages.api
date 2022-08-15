@@ -5,11 +5,13 @@ const { runRequest, runRequestCallback } = require('../common/request_wrapper');
 const { tables } = require('../common/constants');
 const { toDate, now, startOfDayDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
+const { log } = require('../common/log');
 
 const app = express();
 
 app.use(express.json({ limit: '2mb' }));
 
+/* Users */
 
 app.get('/users', async function (req, res) {
   runRequest(req, res, async (req) => {
@@ -39,6 +41,10 @@ app.post('/users', async function (req, res) {
   });
 });
 
+/* Users */
+
+/* Folders */
+
 app.post('/folders', async function (req, res) {
   runRequest(req, res, async (req) => {
     const user_id = resolveUserId(req);
@@ -60,19 +66,21 @@ app.post('/folders', async function (req, res) {
 
 app.patch('/folders', async function (req, res) {
   runRequest(req, res, async (req) => {
+    const user_id = resolveUserId(req);
     const { id, title, position, is_active, times_used } = req.body;
+    const folder_data = { title, position: position ? position : 0, is_active, times_used }
+    const message_in_folder_data = { folder_id: id, is_active, user_id };
     await knex(tables.folders)
-      .update({
-        title,
-        position: position ? position : 0,
-        is_active,
-        times_used
-      })
+      .update(folder_data)
       .where('id', id);
     await knex(tables.messages_in_folders)
       .update({ is_active })
       .where('folder_id', id);
+
+    log(tables.folders, folder_data, user_id, knex);
+    log(tables.messages_in_folders, message_in_folder_data, user_id, knex);
   });
+
 });
 
 app.get('/folders', async function (req, res) {
@@ -85,6 +93,10 @@ app.get('/folders', async function (req, res) {
     return result;
   });
 });
+
+/* Folders */
+
+/* Messages */
 
 app.post('/messages', async function (req, res) {
   runRequest(req, res, async (req) => {
@@ -126,33 +138,42 @@ app.post('/messages', async function (req, res) {
     }
     await knex(tables.messages)
       .insert(messages_data);
-
     await knex(tables.messages_in_folders)
       .insert(messages_in_folder_data);
 
+    await log(tables.messages, messages_data, user_id, knex);
+    await log(tables.messages_in_folders, messages_in_folder_data, user_id, knex);
     return messages_data.map((message) => message.id);
   });
 });
 
 app.patch('/messages', async function (req, res) {
   runRequest(req, res, async (req) => {
+    const user_id = resolveUserId(req);
     const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = req.body;
+    const message_data = { title, short_title, body, position, times_used, is_active };
     await knex(tables.messages)
       .update(
-        { title, short_title, body, position, times_used, is_active }
+        message_data
       )
       .where('id', id);
-
+    const message_in_folder_data = {
+      message_id: id,
+      folder_id,
+      is_active
+    };
     if (previous_folder_id && folder_id) {
       await knex(tables.messages_in_folders)
-        .update({
-          message_id: id,
-          folder_id,
-          is_active
-        })
+        .update(message_in_folder_data)
         .where('folder_id', previous_folder_id)
         .andWhere('message_id', id);
+      message_in_folder_data.id = id;
+      message_in_folder_data.user_id = user_id;
+      await log(tables.messages_in_folders, message_in_folder_data, user_id, knex);
     }
+    message_data.id = id;
+    message_data.user_id = user_id;
+    await log(tables.messages, message_data, user_id, knex);
   });
 });
 
@@ -170,6 +191,9 @@ app.get('/messages', async function (req, res) {
   });
 });
 
+/* Messages */
+
+/* Deleted Calls */
 
 app.post('/deletedCalls', async function (req, res) {
   runRequest(req, res, async (req) => {
@@ -192,6 +216,10 @@ app.get('/deletedCalls', async function (req, res) {
     return result;
   });
 });
+
+/* Deleted Calls */
+
+/* Phone Calls */
 
 app.post('/phoneCall', async function (req, res) {
   runRequest(req, res, async (req) => {
@@ -252,19 +280,19 @@ app.post('/phoneCalls', async function (req, res) {
           created_at: now(),
         }
       );
-        prepareMessagesSent(messages_sent, phone_call_id);
-        messages_sent.forEach((value) => messages_sent_array.push(value));
+      prepareMessagesSent(messages_sent, phone_call_id);
+      messages_sent?.forEach((value) => messages_sent_array.push(value));
     });
     knex.transaction(function (trx) {
       knex.insert(phone_calls_array)
         .into(tables.phone_calls)
         .transacting(trx)
         .then(async function () {
-          if(messages_sent_array && messages_sent_array.length > 0)
-          return knex
-            .insert(messages_sent_array)
-            .into(tables.messages_sent)
-            .transacting(trx)
+          if (messages_sent_array && messages_sent_array.length > 0)
+            return knex
+              .insert(messages_sent_array)
+              .into(tables.messages_sent)
+              .transacting(trx)
         })
         .then(trx.commit)
         .catch(trx.rollback)
@@ -277,8 +305,13 @@ app.post('/phoneCalls', async function (req, res) {
         callbackError(res, error);
       });// transaction
   }); // runRequestCallback
-}); // endpoint
+});
 
+/* Phone Calls */
+
+/* Settings */
+
+// ToDo: Make it accept a list
 app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req) {
     const user_id = resolveUserId(req);
@@ -292,9 +325,11 @@ app.patch('/settings', async function (req, res) {
         value,
         modified_at
       });
+    await log(tables.settings, data, user_id, knex);
   });
 });
 
+/* Messages In Folders */
 app.get('/settings/:key?', async function (req, res) {
   runRequest(req, res, async function (req) {
     const { key } = req.params;
@@ -312,43 +347,68 @@ app.get('/settings/:key?', async function (req, res) {
   });
 });
 
+/* Settings */
+
 app.delete('/messagesInFolders/:folder_id?', async function (req, res) {
   runRequest(req, res, async function (req) {
     const { folder_id } = req.params;
+    const user_id = resolveUserId(req);
     if (folder_id) {
       await knex(tables.messages_in_folders).update({
         'is_active': false
       }).where('folder_id', folder_id);
+      log(tables.messages_in_folders, { is_active: false, folder_id }, user_id, knex);
     }
   });
 });
-
+/* Messages In Folders */
 
 /* Statistics */
 
-app.get('/statistics/callsCount', async function (req, res) {
+app.get('/statistics/callsCount/:start_date?/:end_date?', async function (req, res) {
   runRequest(req, res, async (req) => {
     const user_id = resolveUserId(req);
+    let { start_date, end_date } = req.query;
+
+    let date_query = '';
+    let values = [user_id];
+    if (start_date) {
+      start_date = toDate(start_date);
+      date_query += ' start_date > ? ';
+      values.push(start_date);
+    }
+    if (end_date) {
+      end_date = toDate(end_date);
+      date_query += date_query.length == 0 ? '' : ' and ';
+      date_query += ' start_date < ? ';
+      values.push(end_date);
+    }
+
     const incoming_query = 'select COUNT(*) '
       + 'from phone_calls '
-      + 'where type = \'INCOMING\' and user_id = ?';
+      + 'where type = \'INCOMING\' and user_id = ?'
+      + (date_query.length > 0 ? ` and ${date_query}` : '');
 
     const outgoing_query = 'select COUNT(*) '
       + 'from phone_calls '
-      + 'where type = \'OUTGOING\' and user_id = ?';
+      + 'where type = \'OUTGOING\' and user_id = ? '
+      + (date_query.length > 0 ? ` and ${date_query}` : '');
 
     const missed_query = 'select COUNT(*) '
       + 'from phone_calls '
-      + 'where type = \'MISSED\' and user_id = ?';
+      + 'where type = \'MISSED\' and user_id = ? '
+      + (date_query.length > 0 ? ` and ${date_query}` : '');
 
     const rejected_query = 'select COUNT(*) '
       + 'from phone_calls '
-      + 'where type = \'REJECTED\' and user_id = ?';
+      + 'where type = \'REJECTED\' and user_id = ?'
+      + (date_query.length > 0 ? ` and ${date_query}` : '');
 
-    const incoming_count = (await knex.raw(incoming_query, user_id)).rows;
-    const outgoing_count = (await knex.raw(outgoing_query, user_id)).rows;
-    const missed_count = (await knex.raw(missed_query, user_id)).rows;
-    const rejected_count = (await knex.raw(rejected_query, user_id)).rows;
+    const incoming_count = (await knex.raw(incoming_query, values)).rows;
+    const outgoing_count = (await knex.raw(outgoing_query, values)).rows;
+    const missed_count = (await knex.raw(missed_query, values)).rows;
+    const rejected_count = (await knex.raw(rejected_query, values)).rows;
+    
     return {
       incoming_count: incoming_count.length > 0 ? incoming_count[0].count : 0,
       outgoing_count: outgoing_count.length > 0 ? outgoing_count[0].count : 0,
@@ -358,20 +418,37 @@ app.get('/statistics/callsCount', async function (req, res) {
   });
 });
 
-app.get('/statistics/messagesSentCount', async function (req, res) {
+app.get('/statistics/messagesSentCount/:startDate?/:endDate?', async function (req, res) {
   runRequest(req, res, async (req) => {
     const user_id = resolveUserId(req);
+    let { start_date, end_date } = req.query;
+
+    let date_query = '';
+    let values = [user_id];
+    if (start_date) {
+      start_date = toDate(start_date);
+      date_query += ' sent_at > ? ';
+      values.push(start_date);
+    }
+    if (end_date) {
+      end_date = toDate(end_date);
+      date_query += date_query.length == 0 ? '' : ' and ';
+      date_query += ' sent_at < ? ';
+      values.push(end_date);
+    }
+
     const query = 'select Count( m_ms.title), m_ms.title\n'
       + 'from (\n'
       + 'messages_sent\n'
-      + 'join messages\n'
-      + 'on messages_sent.message_id = messages.id\n'
+      + 'as ms join messages\n'
+      + 'on ms.message_id = messages.id\n'
       + ') as m_ms\n'
       + 'where user_id = ?\n'
+      + (date_query.length > 0 ? `and ${date_query}\n` : '')
       + 'group by m_ms.title;'
-    const messages_sent_count = (await knex.raw(query, user_id)).rows;
-    if (messages_sent_count.length <= 0) return null
-    return messages_sent_count
+    
+    const messages_sent_count = (await knex.raw(query, values)).rows;
+    return messages_sent_count.length <= 0 ? null : messages_sent_count;
   });
 });
 
@@ -385,13 +462,17 @@ app.use((req, res, next) => {
 });
 
 const prepareMessagesSent = (messages_sent, phone_call_id) => {
-  messages_sent.map((value) => {
-    value['id'] = v4();
-    value['is_active'] = true;
-    value['phone_call_id'] = phone_call_id;
-    value['sent_at'] = toDate(value['sent_at']);
-    value['created_at'] = now();
-  });
+  if (messages_sent == undefined || !Array.isArray(messages_sent)) {
+    messages_sent = [];
+  } else {
+    messages_sent.map((value) => {
+      value['id'] = v4();
+      value['is_active'] = true;
+      value['phone_call_id'] = phone_call_id;
+      value['sent_at'] = toDate(value['sent_at']);
+      value['created_at'] = now();
+    });
+  }
 }
 
 const resolveUserId = (req) => {

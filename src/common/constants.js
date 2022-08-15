@@ -7,6 +7,7 @@ folders: 'folders',
 messages_in_folders: 'messages_in_folders',
 deleted_calls: 'deleted_calls',
 settings: 'settings',
+log_suffix: '_history',
 };
 
 module.exports = {
