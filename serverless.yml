@@ -28,7 +28,7 @@ custom:
 provider:
   name: aws
   stage: dev
-  runtime: nodejs14.x
+  runtime: nodejs16.x
   profile: ${self:custom.myProfile.${self:custom.myStage}}
 
   iam:

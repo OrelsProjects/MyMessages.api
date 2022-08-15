@@ -408,6 +408,7 @@ app.get('/statistics/callsCount/:start_date?/:end_date?', async function (req, r
     const outgoing_count = (await knex.raw(outgoing_query, values)).rows;
     const missed_count = (await knex.raw(missed_query, values)).rows;
     const rejected_count = (await knex.raw(rejected_query, values)).rows;
+    
     return {
       incoming_count: incoming_count.length > 0 ? incoming_count[0].count : 0,
       outgoing_count: outgoing_count.length > 0 ? outgoing_count[0].count : 0,
@@ -435,8 +436,6 @@ app.get('/statistics/messagesSentCount/:startDate?/:endDate?', async function (r
       date_query += ' sent_at < ? ';
       values.push(end_date);
     }
-
-    console.log(values);
 
     const query = 'select Count( m_ms.title), m_ms.title\n'
       + 'from (\n'
