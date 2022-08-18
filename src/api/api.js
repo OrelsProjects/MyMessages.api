@@ -238,7 +238,9 @@ app.post('/phoneCall', async function (req, res) {
         user_id,
         is_active: true,
         created_at: now(),
-      });
+      })
+      .onConflict(['user_id', 'start_date'])
+      .merge()
     prepareMessagesSent(messages_sent, phone_call_id);
     await knex(tables.messages_sent)
       .insert(messages_sent);
@@ -287,11 +289,15 @@ app.post('/phoneCalls', async function (req, res) {
       knex.insert(phone_calls_array)
         .into(tables.phone_calls)
         .transacting(trx)
+        .onConflict(['user_id', 'start_date'])
+        .merge()
         .then(async function () {
           if (messages_sent_array && messages_sent_array.length > 0)
             return knex
               .insert(messages_sent_array)
               .into(tables.messages_sent)
+              .onConflict(['phone_call_id', 'sent_at'])
+              .ignore()
               .transacting(trx)
         })
         .then(trx.commit)
