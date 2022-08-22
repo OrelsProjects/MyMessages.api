@@ -17,7 +17,7 @@ const knex = require('knex')({
 const runRequest = async (req, res, request) => {
   try {
     const result = await request(req);
-    console.log(`query result: ${result}, at: ${new Date()}`);
+    console.log(`query result: ${JSON.stringify(result)}, at: ${new Date()}`);
     res.status(200).json({
       body: result,
     });

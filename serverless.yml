@@ -23,7 +23,6 @@ custom:
       Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Address]
     PORT:
       Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Port]
-      
 
 provider:
   name: aws
@@ -33,10 +32,10 @@ provider:
 
   iam:
     role: LambdaRole
-  
+
   environment:
     DB_NAME: ${self:custom.secrets.${self:custom.myStage}.DB_NAME}
-    DB_USERNAME:  ${self:custom.secrets.${self:custom.myStage}.DB_USERNAME}
+    DB_USERNAME: ${self:custom.secrets.${self:custom.myStage}.DB_USERNAME}
     DB_PASSWORD: ${self:custom.secrets.${self:custom.myStage}.DB_PASSWORD}
     DB_HOST: ${self:custom.secrets.${self:custom.myStage}.DB_HOST}
     DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
@@ -46,6 +45,9 @@ functions:
     handler: src/api/api.handler
     events:
       - httpApi: "*"
+
+#           method: GET
+#          path: /users
 
 resources:
   Resources:
@@ -62,7 +64,6 @@ resources:
         #   Ref: ServerlessSubnetGroup
         Engine: postgres
         PubliclyAccessible: true
-
 
 plugins:
   - serverless-offline
