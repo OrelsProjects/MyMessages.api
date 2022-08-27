@@ -11,6 +11,10 @@ custom:
     prod: ${file(secrets_prod.json)}
     dev: ${file(secrets_dev.json)}
 
+  bucketUrl:
+    prod: s3mymessagesprod
+    dev: http://mymbucketdev.s3-website-us-east-1.amazonaws.com
+
   serverless-offline:
     httpPort: 4000
     websocketPort: 4001
@@ -64,6 +68,7 @@ resources:
         #   Ref: ServerlessSubnetGroup
         Engine: postgres
         PubliclyAccessible: true
+
 
 plugins:
   - serverless-offline
