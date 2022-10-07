@@ -1,0 +1,340 @@
+service: mymessages-api
+frameworkVersion: "3"
+
+custom:
+  myStage: ${opt:stage, self:provider.stage}
+  myProfile:
+    prod: MyMessages-prod
+    dev: MyMessages-dev
+
+  secrets:
+    prod: ${file(secrets_prod.json)}
+    dev: ${file(secrets_dev.json)}
+
+  bucketUrl:
+    prod: s3mymessagesprod
+    dev: http://mymbucketdev.s3-website-us-east-1.amazonaws.com
+
+  serverless-offline:
+    httpPort: 4000
+    websocketPort: 4001
+    lambdaPort: 4002
+  DB_NAME: ${file(./secrets_${self:custom.myStage}.json):DB_NAME}
+  USERNAME: ${file(./secrets_${self:custom.myStage}.json):DB_USERNAME}
+  PASSWORD: ${file(./secrets_${self:custom.myStage}.json):DB_PASSWORD}
+  POSTGRESQL:
+    HOST:
+      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Address]
+    PORT:
+      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Port]
+
+provider:
+  name: aws
+  stage: dev
+  runtime: nodejs16.x
+  profile: ${self:custom.myProfile.${self:custom.myStage}}
+
+  iam:
+    role: LambdaRole
+
+  environment:
+    DB_NAME: ${self:custom.secrets.${self:custom.myStage}.DB_NAME}
+    DB_USERNAME: ${self:custom.secrets.${self:custom.myStage}.DB_USERNAME}
+    DB_PASSWORD: ${self:custom.secrets.${self:custom.myStage}.DB_PASSWORD}
+    DB_HOST: ${self:custom.secrets.${self:custom.myStage}.DB_HOST}
+    DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
+
+functions:
+  ## Users ##
+  get_user:
+    handler: src/api/users.getUser
+    events:
+      - httpApi:
+          path: /users
+          method: get
+          
+
+  create_user:
+    handler: src/api/users.getUser
+    events:
+      - httpApi:
+          path: /users
+          method: post
+          
+  ## Users ##
+
+  ## Messages ##
+  get_messages:
+    handler: src/api/messages.getMessages
+    events:
+      - httpApi:
+          path: /messages
+          method: get
+          
+
+  create_message:
+    handler: src/api/messages.createMessage
+    events:
+      - httpApi:
+          path: /messages
+          method: post
+          
+
+  update_message:
+    handler: src/api/messages.updateMessage
+    events:
+      - httpApi:
+          path: /messages
+          method: patch
+          
+  ## Messages ##
+
+  ## Folders ##
+  get_folders:
+    handler: src/api/folders.getFolders
+    events:
+      - httpApi:
+          path: /folders
+          method: get
+          
+  get_deleted_folders:
+    handler: src/api/folders.getDeletedFolders
+    events:
+      - httpApi:
+          path: /folders/deleted
+          method: get
+
+  create_folder:
+    handler: src/api/folders.createFolder
+    events:
+      - httpApi:
+          path: /folders
+          method: post
+          
+
+  update_folder:
+    handler: src/api/folders.updateFolder
+    events:
+      - httpApi:
+          path: /folders
+          method: patch
+          
+
+  delete_folder:
+    handler: src/api/folders.deleteFolder
+    events:
+      - httpApi:
+          path: /folders/{id}
+          method: delete
+          
+  ## Folders ##
+
+  ## Messages in Folders ##
+  delete_messages:
+    handler: src/api/messagesInFolders.deleteMessagesFromFolder
+    events:
+      - httpApi:
+          path: /messagesInFolders
+          method: delete
+          
+  ## Messages in Folders ##
+
+  ## Deleted Calls ##
+  get_deleted_calls_by_date:
+    handler: src/api/deletedCalls.getDeletedCallsByDate
+    events:
+      - httpApi:
+          path: /deletedCalls/{from_date}
+          method: get
+          
+
+  get_deleted_calls:
+    handler: src/api/deletedCalls.getDeletedCalls
+    events:
+      - httpApi:
+          path: /deletedCalls
+          method: get
+          
+
+  create_deleted_call:
+    handler: src/api/deletedCalls.getDeletedCallsByDate
+    events:
+      - httpApi:
+          path: /deletedCalls
+          method: post
+          
+  ## Deleted Calls ##
+
+  ## Phone Calls ##
+  create_phone_call:
+    handler: src/api/phone-calls/phoneCalls.createPhoneCall
+    events:
+      - httpApi:
+          path: /phoneCall
+          method: post
+          
+
+  create_phone_calls:
+    handler: src/api/phone-calls/phoneCalls.createPhoneCalls
+    events:
+      - httpApi:
+          
+          path: /phoneCalls
+          method: post
+  ## Phone Calls ##
+
+  ## Settings ##
+  get_settings:
+    handler: src/api/settings/settings.getSettings
+    events:
+      - httpApi:
+          path: /settings/{key}
+          method: get
+          
+  get_all_settings:
+    handler: src/api/settings/settings.getSettings
+    events:
+      - httpApi:
+          path: /settings
+          method: get
+          
+
+  update_settings:
+    handler: src/api/settings/settings.updateSettings
+    events:
+      - httpApi:
+          path: /settings
+          method: patch
+          
+  ## Settings ##
+
+  ## Statistics ##
+
+  get_messages_sent_count_by_2_dates:
+    handler: src/api/statistics.getMessagesSentCount
+    events:
+      - httpApi:
+          path: /statistics/messagesSentCount/{start_date}/{end_date}
+          method: get
+
+  get_messages_sent_count_by_start_date:
+    handler: src/api/statistics.getMessagesSentCount
+    events:
+      - httpApi:
+          path: /statistics/messagesSentCount/{start_date}
+          method: get
+  
+  get_all_messages_sent_count:
+    handler: src/api/statistics.getMessagesSentCount
+    events:
+      - httpApi:
+          path: /statistics/messagesSentCount
+          method: get
+
+  get_calls_count_by_2_dates:
+    handler: src/api/statistics.getCallsCount
+    events:
+      - httpApi:
+          path: /statistics/callsCount/{start_date}/{end_date}
+          method: get
+
+  get_calls_count_by_start_date:
+    handler: src/api/statistics.getCallsCount
+    events:
+      - httpApi:
+          path: /statistics/callsCount/{start_date}
+          method: get
+          
+  get_all_calls_count:
+    handler: src/api/statistics.getCallsCount
+    events:
+      - httpApi:
+          path: /statistics/callsCount
+          method: get
+          
+## Statistics ##
+
+## Employees ##
+  get_all_employees:
+    handler: src/api/employees/employees.getEmployees
+    events:
+      - httpApi:
+          path: /employees
+          method: get
+  get_employees_settings:
+      handler: src/api/employees/employees.getEmployeesSettings
+      events:
+        - httpApi:
+            path: /employees/settings
+            method: get
+## Employees ##
+
+#    The following are a few example events you can configure
+#    NOTE: Please make sure to change your handler code to work with those events
+#    Check the event documentation for details
+#    events:
+#      - httpApi:
+#          path: /users/create
+#          method: get
+#      - websocket: $connect
+#      - s3: ${env:BUCKET}
+#      - schedule: rate(10 minutes)
+#      - sns: greeter-topic
+#      - stream: arn:aws:dynamodb:region:XXXXXX:table/foo/stream/1970-01-01T00:00:00.000
+#      - alexaSkill: amzn1.ask.skill.xx-xx-xx-xx
+#      - alexaSmartHome: amzn1.ask.skill.xx-xx-xx-xx
+#      - iot:
+#          sql: "SELECT * FROM 'some_topic'"
+#      - cloudwatchEvent:
+#          event:
+#            source:
+#              - "aws.ec2"
+#            detail-type:
+#              - "EC2 Instance State-change Notification"
+#            detail:
+#              state:
+#                - pending
+#      - cloudwatchLog: '/aws/lambda/hello'
+#      - cognitoUserPool:
+#          pool: MyUserPool
+#          trigger: PreSignUp
+#      - alb:
+#          listenerArn: arn:aws:elasticloadbalancing:us-east-1:XXXXXX:listener/app/my-load-balancer/50dc6c495c0c9188/
+#          priority: 1
+#          conditions:
+#            host: example.com
+#            path: /hello
+
+#    Define function environment variables here
+#    environment:
+#      variable2: value2
+
+# you can add CloudFormation resource templates here
+#resources:
+#  Resources:
+#    NewResource:
+#      Type: AWS::S3::Bucket
+#      Properties:
+#        BucketName: my-new-bucket
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
+
+
+resources:
+  Resources:
+    LambdaRole: ${file(./resource/LambdaRole.yml)}
+    PostgreSqlRDSInstance:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        MasterUsername: ${self:custom.USERNAME}
+        MasterUserPassword: ${self:custom.PASSWORD}
+        AllocatedStorage: 20
+        DBName: ${self:custom.DB_NAME}
+        DBInstanceClass: db.t3.micro
+        Engine: postgres
+        PubliclyAccessible: true
+
+plugins:
+  - serverless-offline
