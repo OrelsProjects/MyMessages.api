@@ -45,6 +45,16 @@ provider:
     DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
 
 functions:
+  get_employees:
+    handler: src/api/employees.handler
+    # environment:
+      # ALLOW_ACCESS: admins
+    environment:
+      BASE_PATH: /employees
+    events: # Use a generic proxy to allow Express app to route.
+      - http: ANY /employees
+      - http: 'ANY /employees/{proxy+}'
+
   data:
     handler: src/api/api.handler
     events:
@@ -68,7 +78,6 @@ resources:
         #   Ref: ServerlessSubnetGroup
         Engine: postgres
         PubliclyAccessible: true
-
 
 plugins:
   - serverless-offline

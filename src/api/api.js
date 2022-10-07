@@ -79,15 +79,38 @@ app.patch('/folders', async function (req, res) {
     log(tables.folders, folder_data, user_id, knex);
     log(tables.messages_in_folders, message_in_folder_data, user_id, knex);
   });
+});
 
+
+app.delete('/folders/:id', async function (req, res) {
+  runRequest(req, res, async (req, user_id) => {
+    const { id } = req.params;
+    const is_active = false
+    await knex.transaction(function (trx) {
+      knex(tables.folders)
+        .update({ is_active })
+        .where('id', id)
+        .transacting(trx)
+        .then(async () => {
+          await knex(tables.messages_in_folders)
+          .update({ is_active })
+            .where('folder_id', id)
+            .transacting(trx)
+        })
+        .then(trx.commit)
+        .catch(trx.rollback)
+    })
+
+    log(tables.folders, { id, is_active }, user_id, knex);
+    log(tables.messages_in_folders, { folder_id: id, is_active }, user_id, knex);
+  });
 });
 
 app.get('/folders', async function (req, res) {
   runRequest(req, res, async (_, user_id) => {
     const result = await knex(tables.folders)
       .select('*')
-      .where('user_id', user_id)
-      .where('is_active', true);
+      .where('user_id', user_id);
     return result;
   });
 });
@@ -175,12 +198,12 @@ app.patch('/messages', async function (req, res) {
 
 app.get('/messages', async function (req, res) {
   runRequest(req, res, async (_, user_id) => {
-    const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, short_title, body, position ,times_used'
+    const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, is_active, short_title, body, position ,times_used'
       + ' FROM (\n' +
       '(SELECT id, folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n' +
-      `SELECT id FROM folders WHERE user_id = ? and is_active = true\n` +
-      ') and is_active = true) m_f\n' +
-      'JOIN (SELECT * FROM messages WHERE is_active = true) AS m\n' +
+      `SELECT id FROM folders WHERE user_id = ?\n` +
+      ')) m_f\n' +
+      'JOIN (SELECT * FROM messages) AS m\n' +
       'ON m.id = m_f.message_id\n)', user_id);
     return result.rows;
   });
@@ -303,6 +326,7 @@ app.post('/phoneCalls', async function (req, res) {
         .transacting(trx)
         .onConflict(['user_id', 'start_date'])
         .ignore()
+        .transacting(trx)
         .then(async function (ids) {
           console.log(ids);
           messages_sent_array = messages_sent_array?.filter((ms) => {
@@ -311,7 +335,7 @@ app.post('/phoneCalls', async function (req, res) {
 
           if (messages_sent_array && messages_sent_array.length > 0) {
             console.log(`After upload: ${JSON.stringify(messages_sent_array)}`);
-            return knex
+            return await knex
               .insert(messages_sent_array)
               .into(tables.messages_sent)
               .onConflict(['phone_call_id', 'sent_at', 'message_id'])
@@ -339,7 +363,7 @@ app.post('/phoneCalls', async function (req, res) {
 app.patch('/settings', async function (req, res) {
   runRequest(req, res, async function (req, user_id) {
     let settings_list = req.body;
-    if(!Array.isArray(settings_list)) {
+    if (!Array.isArray(settings_list)) {
       settings_list = [settings_list];
     }
     prepareSettingsList(settings_list, user_id);
@@ -495,10 +519,10 @@ const prepareMessagesSent = (messages_sent, phone_call_id) => {
 
 const prepareSettingsList = (settings_list, user_id) => {
   if (!Array.isArray(settings_list)) throw Error('Settings must be an array');
-  settings_list.forEach((settings) => { 
+  settings_list.forEach((settings) => {
     settings.modified_at = now();
     settings.user_id = user_id;
-   });
+  });
 }
 
 module.exports.handler = serverless(app);

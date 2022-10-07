@@ -18,7 +18,6 @@ const runRequest = async (req, res, request) => {
   try {
     const user_id = resolveUserId(req);
     const result = await request(req, user_id);
-    console.log(`query result: ${JSON.stringify(result)}, at: ${new Date()}`);
     res.status(200).json({
       body: result,
     });
