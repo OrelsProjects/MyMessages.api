@@ -2,6 +2,42 @@ const { runRequest } = require('../common/request_wrapper');
 const { toDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
 
+const getCallsCountByDay = async (req, context) => runRequest(req, context, async (req, user_id) => {
+  let start_date = null;
+  let end_date = null;
+  if (req.queryStringParameters) {
+    start_date = req.queryStringParameters.start_date;
+    end_date = req.queryStringParameters.end_date;
+  }
+  let date_query = '';
+  let values = [user_id];
+  if (start_date) {
+    start_date = toDate(start_date);
+    date_query += ' start_date > ? ';
+    values.push(start_date);
+  }
+  if (end_date) {
+    end_date = toDate(end_date);
+    date_query += date_query.length == 0 ? '' : ' and ';
+    date_query += ' start_date < ? ';
+    values.push(end_date);
+  }
+
+  query = 'select  EXTRACT(DAY FROM start_date) as day,\n'
+    + ' EXTRACT(MONTH FROM start_date) as month,\n'
+    + ' EXTRACT(YEAR FROM start_date) as year,\n'
+    + ' type, count(*)\n'
+    + ' from phone_calls\n'
+    + ' where user_id = ?'
+    + (date_query.length > 0 ? ` and ${date_query}` : '')
+    + '\ngroup by day, month, year, type';
+
+  const result = (await knex.raw(query, values)).rows;
+
+  return result;
+
+})
+
 const getCallsCount = async (req, context) => runRequest(req, context, async (req, user_id) => {
   let start_date = null;
   let end_date = null;
@@ -93,6 +129,7 @@ const getMessagesSentCount = async (req, context) => runRequest(req, context, as
 });
 
 module.exports = {
+  getCallsCountByDay,
   getCallsCount,
   getMessagesSentCount,
 }

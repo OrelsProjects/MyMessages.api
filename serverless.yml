@@ -52,7 +52,6 @@ functions:
       - httpApi:
           path: /users
           method: get
-          
 
   create_user:
     handler: src/api/users.getUser
@@ -60,7 +59,7 @@ functions:
       - httpApi:
           path: /users
           method: post
-          
+
   ## Users ##
 
   ## Messages ##
@@ -70,7 +69,6 @@ functions:
       - httpApi:
           path: /messages
           method: get
-          
 
   create_message:
     handler: src/api/messages.createMessage
@@ -78,7 +76,6 @@ functions:
       - httpApi:
           path: /messages
           method: post
-          
 
   update_message:
     handler: src/api/messages.updateMessage
@@ -86,7 +83,7 @@ functions:
       - httpApi:
           path: /messages
           method: patch
-          
+
   ## Messages ##
 
   ## Folders ##
@@ -96,7 +93,7 @@ functions:
       - httpApi:
           path: /folders
           method: get
-          
+
   get_deleted_folders:
     handler: src/api/folders.getDeletedFolders
     events:
@@ -110,7 +107,6 @@ functions:
       - httpApi:
           path: /folders
           method: post
-          
 
   update_folder:
     handler: src/api/folders.updateFolder
@@ -118,7 +114,6 @@ functions:
       - httpApi:
           path: /folders
           method: patch
-          
 
   delete_folder:
     handler: src/api/folders.deleteFolder
@@ -126,7 +121,7 @@ functions:
       - httpApi:
           path: /folders/{id}
           method: delete
-          
+
   ## Folders ##
 
   ## Messages in Folders ##
@@ -136,7 +131,7 @@ functions:
       - httpApi:
           path: /messagesInFolders
           method: delete
-          
+
   ## Messages in Folders ##
 
   ## Deleted Calls ##
@@ -146,7 +141,6 @@ functions:
       - httpApi:
           path: /deletedCalls/{from_date}
           method: get
-          
 
   get_deleted_calls:
     handler: src/api/deletedCalls.getDeletedCalls
@@ -154,31 +148,28 @@ functions:
       - httpApi:
           path: /deletedCalls
           method: get
-          
 
   create_deleted_call:
-    handler: src/api/deletedCalls.getDeletedCallsByDate
+    handler: src/api/deletedCalls.createDeletedCall
     events:
       - httpApi:
           path: /deletedCalls
           method: post
-          
+
   ## Deleted Calls ##
 
   ## Phone Calls ##
   create_phone_call:
-    handler: src/api/phone-calls/phoneCalls.createPhoneCall
+    handler: src/api/phone-calls/phonecalls.createPhoneCall
     events:
       - httpApi:
           path: /phoneCall
           method: post
-          
 
   create_phone_calls:
-    handler: src/api/phone-calls/phoneCalls.createPhoneCalls
+    handler: src/api/phone-calls/phonecalls.createPhoneCalls
     events:
       - httpApi:
-          
           path: /phoneCalls
           method: post
   ## Phone Calls ##
@@ -190,14 +181,13 @@ functions:
       - httpApi:
           path: /settings/{key}
           method: get
-          
+
   get_all_settings:
     handler: src/api/settings/settings.getSettings
     events:
       - httpApi:
           path: /settings
           method: get
-          
 
   update_settings:
     handler: src/api/settings/settings.updateSettings
@@ -205,10 +195,31 @@ functions:
       - httpApi:
           path: /settings
           method: patch
-          
+
   ## Settings ##
 
   ## Statistics ##
+
+  get_calls_count_by_day_2_dates:
+    handler: src/api/statistics.getCallsCountByDay
+    events:
+      - httpApi:
+          path: /statistics/callsCountByDay/{start_date}/{end_date}
+          method: get
+
+  get_calls_count_by_day_1_date:
+    handler: src/api/statistics.getCallsCountByDay
+    events:
+      - httpApi:
+          path: /statistics/callsCountByDay/{start_date}
+          method: get
+
+  get_calls_count_by_day:
+    handler: src/api/statistics.getCallsCountByDay
+    events:
+      - httpApi:
+          path: /statistics/callsCountByDay
+          method: get
 
   get_messages_sent_count_by_2_dates:
     handler: src/api/statistics.getMessagesSentCount
@@ -223,7 +234,7 @@ functions:
       - httpApi:
           path: /statistics/messagesSentCount/{start_date}
           method: get
-  
+
   get_all_messages_sent_count:
     handler: src/api/statistics.getMessagesSentCount
     events:
@@ -244,17 +255,17 @@ functions:
       - httpApi:
           path: /statistics/callsCount/{start_date}
           method: get
-          
+
   get_all_calls_count:
     handler: src/api/statistics.getCallsCount
     events:
       - httpApi:
           path: /statistics/callsCount
           method: get
-          
-## Statistics ##
 
-## Employees ##
+  ## Statistics ##
+
+  ## Employees ##
   get_all_employees:
     handler: src/api/employees/employees.getEmployees
     events:
@@ -262,11 +273,11 @@ functions:
           path: /employees
           method: get
   get_employees_settings:
-      handler: src/api/employees/employees.getEmployeesSettings
-      events:
-        - httpApi:
-            path: /employees/settings
-            method: get
+    handler: src/api/employees/employees.getEmployeesSettings
+    events:
+      - httpApi:
+          path: /employees/settings
+          method: get
 ## Employees ##
 
 #    The following are a few example events you can configure
@@ -320,7 +331,6 @@ functions:
 #     NewOutput:
 #       Description: "Description for the output"
 #       Value: "Some output value"
-
 
 resources:
   Resources:

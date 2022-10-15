@@ -66,29 +66,35 @@ const createPhoneCalls = async (req, context) => runRequest(req, context, async 
         prepareMessagesSent(messages_sent, phone_call_id);
         messages_sent?.forEach((value) => messages_sent_array.push(value));
     });
-    await knex.transaction(function (trx) {
-        knex.insert(phone_calls_array, 'id')
-            .into(tables.phone_calls)
-            .transacting(trx)
-            .onConflict(['user_id', 'start_date'])
-            .ignore()
-            .transacting(trx)
-            .then(async function (ids) {
-                messages_sent_array = messages_sent_array?.filter((ms) => {
-                    return ids.map((id) => id.id).includes(ms['phone_call_id'])
-                });
+    return new Promise(function (resolve, reject) {
+        knex.transaction(function (trx) {
+            knex.insert(phone_calls_array, 'id')
+                .into(tables.phone_calls)
+                .transacting(trx)
+                .onConflict(['user_id', 'start_date'])
+                .ignore()
+                .transacting(trx)
+                .then(async function (ids) {
+                    messages_sent_array = messages_sent_array?.filter((ms) => {
+                        return ids.map((id) => id.id).includes(ms['phone_call_id'])
+                    });
 
-                if (messages_sent_array && messages_sent_array.length > 0) {
-                    return await knex
-                        .insert(messages_sent_array)
-                        .into(tables.messages_sent)
-                        .onConflict(['phone_call_id', 'sent_at', 'message_id'])
-                        .ignore()
-                        .transacting(trx)
-                }
-            })
-            .then(trx.commit)
-            .catch(trx.rollback)
+                    if (messages_sent_array && messages_sent_array.length > 0) {
+                        return await knex
+                            .insert(messages_sent_array)
+                            .into(tables.messages_sent)
+                            .onConflict(['phone_call_id', 'sent_at', 'message_id'])
+                            .ignore()
+                            .transacting(trx)
+                    }
+                })
+                .then((_) => {
+                    const phone_call_ids = phone_calls_array.map((phone_call) => phone_call.id) ?? [];
+                    resolve(phone_call_ids);
+                })
+                .catch((err) => reject(err))
+
+        });
     });
 }); // runRequestCallback
 

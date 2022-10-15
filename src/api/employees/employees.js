@@ -17,7 +17,6 @@ const getEmployeesSettings = async (req, context) => runRequest(req, context, as
         + " where belongs_to = ?) as my_users"
         + " left join settings s"
         + " on my_users.id = s.user_id)", [user_id]);
-        console.log(employees_settings);
     return employees_settings.rows;
 })
 

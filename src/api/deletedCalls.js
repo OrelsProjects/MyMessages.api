@@ -13,13 +13,15 @@ const createDeletedCall = async (req, context) => runRequest(req, context, async
         .insert({ id: v4(), user_id, deleted_at: deleted_at_date, number }, ['id'])
         .onConflict(['user_id', 'deleted_at'])
         .ignore()
-    console.log(id)
     if (id[0] && id[0].id) {
         return id[0].id;
     }
 })
 
 const getDeletedCallsByDate = async (req, context) => runRequest(req, context, async (req, user_id) => {
+    if (!req.pathParameters.from_date) {
+        throw Error('from_date must be sent in path parameters!');
+    }
     const { from_date } = req.pathParameters;
     const result = await knex(tables.deleted_calls).select('*')
         .where('user_id', user_id)

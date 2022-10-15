@@ -38,8 +38,11 @@ const updateFolder = async (req, context) => runRequest(req, context, async (req
 });
 // folder/:id
 const deleteFolder = async (req, context) => runRequest(req, context, async (req, user_id) => {
-    const { id } = req.pathParameters
-    const is_active = false
+    if(!req.pathParameters) {
+        throw Error('Folder id must be sent in path parameters!');
+    }
+    const { id } = req.pathParameters;
+    const is_active = false;
     await knex.transaction(function (trx) {
         knex(tables.folders)
             .update({ is_active })

@@ -48,10 +48,15 @@ const runRequestCallback = async (req, context, request) => {
     await request(req, user_id, callback, callbackError);
   } catch (error) {
     console.log(error);
-    res.status(500).json(
+    return (
       {
-        body: null,
-        error: "Request failed."
+        statusCode: 500,
+        body: JSON.stringify(
+          {
+            body: result ? result : {}
+          }
+        ),
+        error: "Request failed.",
       });
   }
 }
@@ -75,11 +80,14 @@ const resolveUserId = (req) => {
 
 const callbackError = (res, error) => {
   console.log(error);
-  res.status(500).json(
-    {
-      body: null,
-      error: "Request failed."
-    });
+  return {
+    statusCode: 200,
+    body: JSON.stringify(
+      {
+        body: result ? result : {}
+      }
+    ),
+  };
 }
 
 const callback = (result) => {
