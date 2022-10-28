@@ -3,7 +3,7 @@ const serverless = require('serverless-http');
 const { v4 } = require('uuid');
 const { runRequest, runRequestCallback } = require('../common/request_wrapper');
 const { tables } = require('../common/constants');
-const { toDate, now, startOfDayDate } = require('../common/utils/date');
+const { toDate, now, startOfDayDate, formatStartAndEndDate } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
 const { log } = require('../common/log');
 
@@ -93,7 +93,7 @@ app.delete('/folders/:id', async function (req, res) {
         .transacting(trx)
         .then(async () => {
           await knex(tables.messages_in_folders)
-          .update({ is_active })
+            .update({ is_active })
             .where('folder_id', id)
             .transacting(trx)
         })
@@ -257,15 +257,17 @@ app.get('/deletedCalls', async function (req, res) {
 
 app.post('/phoneCall', async function (req, res) {
   runRequest(req, res, async (req, user_id) => {
-    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent } = req.body;
+    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, actual_end_date } = req.body;
+    const { start_date_formatted, end_date_formatted } = formatStartAndEndDate(start_date, end_date)
     const phone_call_id = v4();
     await knex(tables.phone_calls)
       .insert({
         id: phone_call_id,
         number,
         contact_name,
-        start_date: toDate(start_date),
-        end_date: toDate(end_date),
+        start_date: start_date_formatted,
+        end_date: end_date_formatted,
+        actual_end_date: actual_end_date ? toDate(actual_end_date) : end_date_formatted,
         is_answered,
         type,
         user_id,
@@ -289,20 +291,20 @@ app.post('/phoneCalls', async function (req, res) {
     if (!Array.isArray(phone_calls)) throw Error('Not array exception in phoneCalls');
     const phone_calls_array = [];
     let messages_sent_array = [];
-    console.log("I am here.")
+
     phone_calls.forEach((phone_call) => {
       const {
         number,
         contact_name,
         start_date,
         end_date,
+        actual_end_date,
         is_answered,
         type,
-        messages_sent
+        messages_sent,
       } = phone_call;
       const phone_call_id = v4();
-      const start_date_formatted = toDate(start_date);
-      const end_date_formatted = toDate(end_date);
+      const { start_date_formatted, end_date_formatted } = formatStartAndEndDate(start_date, end_date)
       phone_calls_array.push(
         {
           id: phone_call_id,
@@ -310,6 +312,7 @@ app.post('/phoneCalls', async function (req, res) {
           contact_name,
           start_date: start_date_formatted,
           end_date: end_date_formatted,
+          actual_end_date: actual_end_date ? toDate(actual_end_date) : end_date_formatted,
           is_answered,
           type,
           user_id,
@@ -352,7 +355,7 @@ app.post('/phoneCalls', async function (req, res) {
       })
       .catch(function (error) {
         callbackError(res, error);
-      });// transaction
+      }); // transaction
   }); // runRequestCallback
 });
 
