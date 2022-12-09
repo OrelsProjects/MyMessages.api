@@ -54,7 +54,7 @@ functions:
           method: get
 
   create_user:
-    handler: src/api/users.getUser
+    handler: src/api/users.createUser
     events:
       - httpApi:
           path: /users

@@ -73,7 +73,6 @@ const createPhoneCalls = async (req, context) => runRequest(req, context, async 
                 .transacting(trx)
                 .onConflict(['user_id', 'start_date'])
                 .ignore()
-                .transacting(trx)
                 .then(async function (ids) {
                     messages_sent_array = messages_sent_array?.filter((ms) => {
                         return ids.map((id) => id.id).includes(ms['phone_call_id'])
@@ -88,13 +87,15 @@ const createPhoneCalls = async (req, context) => runRequest(req, context, async 
                             .transacting(trx)
                     }
                 })
-                .then((_) => {
-                    const phone_call_ids = phone_calls_array.map((phone_call) => phone_call.id) ?? [];
-                    resolve(phone_call_ids);
-                })
-                .catch((err) => reject(err))
-
-        });
+                .then(trx.commit)
+                .catch(trx.rollback)
+        })
+            .then(function (_) {
+                const phone_call_ids = phone_calls_array.map((phone_call) => phone_call.id) ?? [];
+                resolve(phone_call_ids);
+            }, (err) => {
+                reject(err);
+            });
     });
 }); // runRequestCallback
 

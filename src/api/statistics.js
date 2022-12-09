@@ -125,7 +125,7 @@ const getMessagesSentCount = async (req, context) => runRequest(req, context, as
     + 'group by m_ms.title;'
 
   const messages_sent_count = (await knex.raw(query, values)).rows;
-  return messages_sent_count.length <= 0 ? null : messages_sent_count;
+  return messages_sent_count.length <= 0 ? [] : messages_sent_count;
 });
 
 module.exports = {

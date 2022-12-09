@@ -6,9 +6,10 @@ const { knex } = require('../common/request_wrapper');
 const getUser = async (req, context) => runRequest(req, context, async (_, user_id) => {
   const result = await knex(tables.users)
     .where('id', user_id)
+    .where('is_active',)
     .first();
-  return result;
-});
+  return result;  
+});   
 
 const createUser = (req, context) => runRequest(req, context, async (req, user_id) => {
   const { first_name, last_name, gender, email, number } = JSON.parse(req.body);
