@@ -6,7 +6,7 @@ const { knex } = require('../../common/request_wrapper');
 const { prepareMessagesSent } = require('./utils');
 
 const createPhoneCall = async (req, context) => runRequest(req, context, async (req, user_id) => {
-    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent } = JSON.parse(req.body);
+    const { number, contact_name, start_date, end_date, is_answered, type, messages_sent, actual_end_date } = JSON.parse(req.body);
     const phone_call_id = v4();
     await knex(tables.phone_calls)
         .insert({
@@ -15,6 +15,7 @@ const createPhoneCall = async (req, context) => runRequest(req, context, async (
             contact_name,
             start_date: toDate(start_date),
             end_date: toDate(end_date),
+            actual_end_date: toDate(actual_end_date),
             is_answered,
             type,
             user_id,
@@ -44,11 +45,13 @@ const createPhoneCalls = async (req, context) => runRequest(req, context, async 
             end_date,
             is_answered,
             type,
-            messages_sent
+            messages_sent,
+            actual_end_date,
         } = phone_call;
         const phone_call_id = v4();
         const start_date_formatted = toDate(start_date);
         const end_date_formatted = toDate(end_date);
+        const actual_end_date_formatted = toDate(actual_end_date);
         phone_calls_array.push(
             {
                 id: phone_call_id,
@@ -60,6 +63,7 @@ const createPhoneCalls = async (req, context) => runRequest(req, context, async 
                 type,
                 user_id,
                 is_active: true,
+                actual_end_date: actual_end_date_formatted,
                 created_at: now(),
             }
         );

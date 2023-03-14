@@ -5,7 +5,7 @@ const { now } = require('../common/utils/date');
 const { knex } = require('../common/request_wrapper');
 const { log } = require('../common/log');
 
-const createMessage = async (req, context) => runRequest(req, context, async (req, user_id) => {
+const createMessage = async(req, context) => runRequest(req, context, async(req, user_id) => {
     let { messages } = JSON.parse(req.body);
     if (!Array.isArray(messages)) {
         const { title, short_title, body, folder_id, position, times_used, user_id } = JSON.parse(req.body);
@@ -51,7 +51,7 @@ const createMessage = async (req, context) => runRequest(req, context, async (re
     return messages_data.map((message) => message.id);
 });
 
-const updateMessage = async (req, context) => runRequest(req, context, async (req, user_id) => {
+const updateMessage = async(req, context) => runRequest(req, context, async(req, user_id) => {
     const { id, title, short_title, body, folder_id, position, times_used, is_active, previous_folder_id } = JSON.parse(req.body);
     const message_data = { title, short_title, body, position, times_used, is_active };
     await knex(tables.messages)
@@ -78,15 +78,19 @@ const updateMessage = async (req, context) => runRequest(req, context, async (re
     await log(tables.messages, message_data, user_id, knex);
 });
 
-const getMessages = async (req, context) => runRequest(req, context, async (_, user_id) => {
-    const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, is_active, short_title, body, position ,times_used'
-        + ' FROM (\n' +
+const getMessages = async(req, context) => runRequest(req, context, async(_, user_id) => {
+    const result = await knex.raw('SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, is_active, short_title, body, position ,times_used' +
+        ' FROM (\n' +
         '(SELECT id, folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n' +
         `SELECT id FROM folders WHERE user_id = ?\n` +
         ')) m_f\n' +
         'JOIN (SELECT * FROM messages) AS m\n' +
         'ON m.id = m_f.message_id\n)', user_id);
-    return result.rows;
+    if (result && result.rows && result.rows.length > 0) {
+        return result.rows;
+    } else {
+        return [];
+    }
 });
 
 module.exports = {
