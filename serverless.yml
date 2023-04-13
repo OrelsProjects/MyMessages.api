@@ -4,8 +4,8 @@ frameworkVersion: "3"
 custom:
   myStage: ${opt:stage, self:provider.stage}
   myProfile:
-    prod: MyMessages-prod
-    dev: MyMessages-dev
+    prod: MyMessages
+    dev: MyMessages
 
   secrets:
     prod: ${file(secrets_prod.json)}
@@ -59,8 +59,32 @@ functions:
       - httpApi:
           path: /users
           method: post
-
+          
   ## Users ##
+
+  ## Auth ##
+  createAuthChallenge:
+    handler: src/api/auth.createAuthChallenge
+    role: SendSMSRole
+    events:
+      - httpApi:
+          path: /auth/create_auth_challenge
+          method: post
+
+  defineAuthChallenge:
+    handler: src/api/auth.defineAuthChallenge
+    events:
+      - httpApi:
+          path: /auth/define_auth_challenge
+          method: post
+
+  verifyAuthChallengeResponse:
+    handler: src/api/auth.verifyAuthChallengeResponse
+    events:
+      - httpApi:
+          path: /auth/verify_auth_challenge_response
+          method: post
+  ## Auth ##
 
   ## Messages ##
   get_messages:
@@ -335,6 +359,7 @@ functions:
 resources:
   Resources:
     LambdaRole: ${file(./resource/LambdaRole.yml)}
+    SendSMSRole: ${file(./resource/SendSMSRole.yml)}
     PostgreSqlRDSInstance:
       Type: AWS::RDS::DBInstance
       Properties:

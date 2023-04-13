@@ -1,4 +1,4 @@
-import { tables } from "../src/common/constants";
+const { tables } = require("../src/common/constants");
 
 /**
  * @param { import("knex").Knex } knex
