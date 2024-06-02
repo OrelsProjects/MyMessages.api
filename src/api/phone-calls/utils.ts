@@ -1,7 +1,7 @@
 const { v4 } = require('uuid');
 const { now, toDate } = require('../../common/utils/date');
 
-const prepareMessagesSent = (messages_sent, phone_call_id) => {
+export const prepareMessagesSent = (messages_sent, phone_call_id) => {
   if (messages_sent == undefined || !Array.isArray(messages_sent)) {
     messages_sent = [];
   } else {
@@ -14,7 +14,3 @@ const prepareMessagesSent = (messages_sent, phone_call_id) => {
     });
   }
 }
-
-module.exports = {
-  prepareMessagesSent
-};

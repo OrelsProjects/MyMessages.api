@@ -31,8 +31,9 @@ custom:
 provider:
   name: aws
   stage: dev
-  runtime: nodejs16.x
+  runtime: nodejs20.x
   profile: ${self:custom.myProfile.${self:custom.myStage}}
+  timeout: 900
 
   iam:
     role: LambdaRole
@@ -43,6 +44,9 @@ provider:
     DB_PASSWORD: ${self:custom.secrets.${self:custom.myStage}.DB_PASSWORD}
     DB_HOST: ${self:custom.secrets.${self:custom.myStage}.DB_HOST}
     DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
+
+    FEATURE_DEEPSIAM_BASE_URL: ${self:custom.secrets.${self:custom.myStage}.FEATURE_DEEPSIAM_BASE_URL}
+    FEATURE_DEEPSIAM_API_KEY: ${self:custom.secrets.${self:custom.myStage}.FEATURE_DEEPSIAM_API_KEY}
 
 functions:
   ## Users ##

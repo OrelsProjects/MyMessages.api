@@ -1,7 +1,7 @@
-require('dotenv').config();
+require("dotenv").config();
 
-const knex = require('knex')({
-  client: 'pg',
+export const knex = require("knex")({
+  client: "pg",
   connection: {
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
@@ -10,96 +10,50 @@ const knex = require('knex')({
     password: process.env.DB_PASSWORD,
   },
   migrations: {
-    tableName: 'migrations'
-  }
+    tableName: "migrations",
+  },
 });
 
-const runRequest = async (req, context, request) => {
+export const runRequest = async (req, context, request) => {
+  let result = {};
   try {
     const user_id = resolveUserId(req);
     context.callbackWaitsForEmptyEventLoop = false;
-    const result = await request(req, user_id);
+    result = await request(req, user_id);
     return {
       statusCode: 200,
-      body: JSON.stringify(
-        {
-          body: result ? result : {}
-        }
-      ),
+      body: JSON.stringify({
+        body: result ? result : {},
+      }),
     };
   } catch (error) {
     console.log(error);
-    return (
-      {
-        statusCode: 500,
-        body: JSON.stringify(
-          {
-            body: result ? result : {}
-          }
-        ),
-        error: "Request failed.",
-      });
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        body: result ? result : {},
+      }),
+      error: "Request failed.",
+    };
   }
-}
-
-const runRequestCallback = async (req, context, request) => {
-  try {
-    const user_id = resolveUserId(req);
-    await request(req, user_id, callback, callbackError);
-  } catch (error) {
-    console.log(error);
-    return (
-      {
-        statusCode: 500,
-        body: JSON.stringify(
-          {
-            body: result ? result : {}
-          }
-        ),
-        error: "Request failed.",
-      });
-  }
-}
+};
 
 const resolveUserId = (req) => {
   const { UserId } = req.headers;
-  const { userid } = req.headers
+  const { userid } = req.headers;
   if (!UserId && !userid) {
-    throw Error('Did you add UserId to the headers?');
+    throw Error("Did you add UserId to the headers?");
   }
-  const regexExpUUID = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
+  const regexExpUUID =
+    /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/gi;
   if (regexExpUUID.test(UserId)) {
     return UserId;
   } else if (regexExpUUID.test(userid)) {
     return userid;
-
   } else {
-    throw Error('userId is not a uuid.');
+    throw Error("userId is not a uuid.");
   }
 };
-
-const callbackError = (res, error) => {
-  console.log(error);
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        body: result ? result : {}
-      }
-    ),
-  };
-}
-
-const callback = (result) => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        body: result ? result : {}
-      }
-    ),
-  };
-}
 
 /* Knex Debugging */
 
@@ -144,9 +98,3 @@ const callback = (result) => {
 //   console.log('On query error', err, querySpec);
 // });
 /* Knex Debugging */
-
-module.exports = {
-  runRequest,
-  knex,
-  runRequestCallback,
-};

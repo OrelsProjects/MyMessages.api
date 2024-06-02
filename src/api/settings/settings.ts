@@ -1,10 +1,10 @@
-const { runRequest } = require('../../common/request_wrapper');
-const { tables } = require('../../common/constants');
-const { knex } = require('../../common/request_wrapper');
-const { log } = require('../../common/log');
-const { prepareSettingsList } = require('./util');
+import { runRequest } from '../../common/request_wrapper';
+import { tables } from '../../common/constants';
+import { knex } from '../../common/request_wrapper';
+import { log } from '../../common/log';
+import { prepareSettingsList } from './util';
 
-const updateSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
+export const updateSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
     let settings_list = JSON.parse(req.body);
     if (!Array.isArray(settings_list)) {
         settings_list = [settings_list];
@@ -17,7 +17,7 @@ const updateSettings = async (req, context) => runRequest(req, context, async fu
     await log(tables.settings, settings_list, user_id, knex);
 });
 
-const getSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
+export const getSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
     let key = null;
     if (req.pathParameters) {
         key = req.pathParameters.key;
@@ -33,8 +33,3 @@ const getSettings = async (req, context) => runRequest(req, context, async funct
     return result;
 
 });
-
-module.exports = {
-    getSettings,
-    updateSettings
-};

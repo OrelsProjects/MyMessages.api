@@ -18,3 +18,5 @@ secrets_*.json
 
 #vscode settings
 .vscode
+
+env
