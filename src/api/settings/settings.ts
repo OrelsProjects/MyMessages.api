@@ -1,35 +1,48 @@
-import { runRequest } from '../../common/request_wrapper';
-import { tables } from '../../common/constants';
-import { knex } from '../../common/request_wrapper';
-import { log } from '../../common/log';
-import { prepareSettingsList } from './util';
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-export const updateSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
-    let settings_list = JSON.parse(req.body);
-    if (!Array.isArray(settings_list)) {
-        settings_list = [settings_list];
-    }
-    prepareSettingsList(settings_list, user_id);
-    await knex(tables.settings)
-        .insert(settings_list)
-        .onConflict(['key', 'user_id'])
-        .merge(['value', 'modified_at']);
-    await log(tables.settings, settings_list, user_id, knex);
-});
+export const updateSettings = async (req, _) => {
+  let settings_list = JSON.parse(req.body);
+  if (!Array.isArray(settings_list)) {
+    settings_list = [settings_list];
+  }
+  settings_list.forEach(async (setting) => {
+    await prisma.settings.upsert({
+      where: {
+        key_user_id: { key: setting.key, user_id: setting.user_id },
+      },
+      update: {
+        value: setting.value,
+        modified_at: new Date().toISOString(),
+      },
+      create: {
+        key: setting.key,
+        value: setting.value,
+        user_id: setting.user_id,
+        modified_at: new Date().toISOString(),
+        enabled: true,
+      },
+    });
+  });
+};
 
-export const getSettings = async (req, context) => runRequest(req, context, async function (req, user_id) {
-    let key = null;
-    if (req.pathParameters) {
-        key = req.pathParameters.key;
-    }
-    let result = null;
-    if (key) {
-        result = await knex(tables.settings).select('*')
-            .where('user_id', user_id).andWhere('key', key);
-    } else {
-        result = await knex(tables.settings).select('*')
-            .where('user_id', user_id)
-    }
-    return result;
-
-});
+export const getSettings = async (req, context) => {
+  let key = null;
+  if (req.pathParameters) {
+    key = req.pathParameters.key;
+  }
+  if (key) {
+    return await prisma.settings.findMany({
+      where: {
+        user_id: req.user_id,
+        key: key,
+      },
+    });
+  } else {
+    return await prisma.settings.findMany({
+      where: {
+        user_id: req.user_id,
+      },
+    });
+  }
+};

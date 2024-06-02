@@ -1,136 +1,50 @@
-import { v4 } from "uuid";
-import { runRequest } from "../common/request_wrapper";
-import { tables } from "../common/constants";
-import { now } from "../common/utils/date";
-import { knex } from "../common/request_wrapper";
-import { log } from "../common/log";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-export const createMessage = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
-    let { messages } = JSON.parse(req.body);
-    if (!Array.isArray(messages)) {
-      const {
-        title,
-        short_title,
-        body,
-        folder_id,
-        position,
-        times_used,
-        user_id,
-      } = JSON.parse(req.body);
-      messages = [];
-      messages.push({
-        title,
-        short_title,
-        body,
-        folder_id,
-        position,
-        times_used,
-        user_id,
-      });
-    }
-    const messages_data = [];
-    const messages_in_folder_data = [];
-    for (let i = 0; i < messages.length; i += 1) {
-      const message_id = v4();
-      const message_in_folder_id = v4();
-      messages_data.push({
-        id: message_id,
-        title: messages[i].title,
-        short_title: messages[i].short_title,
-        body: messages[i].body,
-        position: messages[i].position ? messages[i].position : 0,
-        times_used: messages[i].times_used ? messages[i].times_used : 0,
-        user_id,
-        is_active: true,
-        created_at: now(),
-      });
-      messages_in_folder_data.push({
-        id: message_in_folder_id,
-        message_id,
-        folder_id: messages[i].folder_id,
-        is_active: true,
-        created_at: now(),
-      });
-    }
+export const createMessage = async (req, context) => {
+  let { messages } = JSON.parse(req.body);
+  if (!Array.isArray(messages)) {
+    messages = [messages];
+  }
+  const messagesData = messages.map((message) => ({
+    title: message.title,
+    shortTitle: message.short_title,
+    body: message.body,
+    position: message.position || 0,
+    timesUsed: message.times_used || 0,
+    userId: req.user_id,
+    isActive: true,
+    createdAt: new Date().toISOString(),
+  }));
 
-    if (messages_data.length == 0) {
-      return [];
-    }
-    await knex(tables.messages).insert(messages_data);
-    await knex(tables.messages_in_folders).insert(messages_in_folder_data);
-
-    await log(tables.messages, messages_data, user_id, knex);
-    await log(
-      tables.messages_in_folders,
-      messages_in_folder_data,
-      user_id,
-      knex
-    );
-    return messages_data.map((message) => message.id);
+  return await prisma.message.createMany({
+    data: messagesData,
   });
+};
 
-export const updateMessage = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
-    const {
-      id,
-      title,
-      short_title,
-      body,
-      folder_id,
-      position,
-      times_used,
-      is_active,
-      previous_folder_id,
-    } = JSON.parse(req.body);
-    const message_data: any = {
+export const updateMessage = async (req, context) => {
+  const { id, title, short_title, body, position, times_used, is_active } =
+    JSON.parse(req.body);
+  return await prisma.message.update({
+    where: { id },
+    data: {
       title,
       short_title,
       body,
       position,
       times_used,
       is_active,
-    };
-    await knex(tables.messages).update(message_data).where("id", id);
-    const message_in_folder_data: any = {
-      message_id: id,
-      folder_id,
-      is_active,
-    };
-    if (previous_folder_id && folder_id) {
-      await knex(tables.messages_in_folders)
-        .update(message_in_folder_data)
-        .where("folder_id", previous_folder_id)
-        .andWhere("message_id", id);
-      message_in_folder_data.id = id;
-      message_in_folder_data.user_id = user_id;
-      await log(
-        tables.messages_in_folders,
-        message_in_folder_data,
-        user_id,
-        knex
-      );
-    }
-    message_data.id = id;
-    message_data.user_id = user_id;
-    await log(tables.messages, message_data, user_id, knex);
+    },
   });
+};
 
-export const getMessages = async (req, context) =>
-  runRequest(req, context, async (_, user_id) => {
-    const result = await knex.raw(
-      "SELECT m_f.id as message_in_folder_id, folder_id, message_id, title, is_active, short_title, body, position ,times_used" +
-        " FROM (\n" +
-        "(SELECT id, folder_id, message_id FROM messages_in_folders WHERE folder_id in (\n" +
-        `SELECT id FROM folders WHERE user_id = ?\n` +
-        ")) m_f\n" +
-        "JOIN (SELECT * FROM messages) AS m\n" +
-        "ON m.id = m_f.message_id\n)",
-      user_id
-    );
-    if (result && result.rows && result.rows.length > 0) {
-      return result.rows;
-    } else {
-      return [];
-    }
+export const getMessages = async (req, context) => {
+  return await prisma.message.findMany({
+    where: {
+      user_id: req.user_id,
+    },
+    include: {
+      messages_in_folders: true,
+    },
   });
+};

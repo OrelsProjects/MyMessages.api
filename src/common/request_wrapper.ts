@@ -1,23 +1,10 @@
-require("dotenv").config();
-
-export const knex = require("knex")({
-  client: "pg",
-  connection: {
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-  },
-  migrations: {
-    tableName: "migrations",
-  },
-});
-
-export const runRequest = async (req, context, request) => {
+export const runRequest = async (req, context, request, checkUserId = true) => {
   let result = {};
   try {
-    const user_id = resolveUserId(req);
+    let user_id = "";
+    if (checkUserId) {
+      user_id = resolveUserId(req);
+    }
     context.callbackWaitsForEmptyEventLoop = false;
     result = await request(req, user_id);
     return {

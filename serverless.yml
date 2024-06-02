@@ -1,5 +1,6 @@
 service: mymessages-api
 frameworkVersion: "3"
+configValidationMode: error
 
 custom:
   myStage: ${opt:stage, self:provider.stage}
@@ -11,22 +12,10 @@ custom:
     prod: ${file(secrets_prod.json)}
     dev: ${file(secrets_dev.json)}
 
-  bucketUrl:
-    prod: s3mymessagesprod
-    dev: http://mymbucketdev.s3-website-us-east-1.amazonaws.com
-
   serverless-offline:
     httpPort: 4000
     websocketPort: 4001
     lambdaPort: 4002
-  DB_NAME: ${file(./secrets_${self:custom.myStage}.json):DB_NAME}
-  USERNAME: ${file(./secrets_${self:custom.myStage}.json):DB_USERNAME}
-  PASSWORD: ${file(./secrets_${self:custom.myStage}.json):DB_PASSWORD}
-  POSTGRESQL:
-    HOST:
-      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Address]
-    PORT:
-      Fn::GetAtt: [PostgreSqlRDSInstance, Endpoint.Port]
 
 provider:
   name: aws
@@ -39,11 +28,7 @@ provider:
     role: LambdaRole
 
   environment:
-    DB_NAME: ${self:custom.secrets.${self:custom.myStage}.DB_NAME}
-    DB_USERNAME: ${self:custom.secrets.${self:custom.myStage}.DB_USERNAME}
-    DB_PASSWORD: ${self:custom.secrets.${self:custom.myStage}.DB_PASSWORD}
-    DB_HOST: ${self:custom.secrets.${self:custom.myStage}.DB_HOST}
-    DB_PORT: ${self:custom.secrets.${self:custom.myStage}.DB_PORT}
+    DATABASE_URL: ${self:custom.secrets.${self:custom.myStage}.DATABASE_URL}
 
     FEATURE_DEEPSIAM_BASE_URL: ${self:custom.secrets.${self:custom.myStage}.FEATURE_DEEPSIAM_BASE_URL}
     FEATURE_DEEPSIAM_API_KEY: ${self:custom.secrets.${self:custom.myStage}.FEATURE_DEEPSIAM_API_KEY}
@@ -63,32 +48,8 @@ functions:
       - httpApi:
           path: /users
           method: post
-          
-  ## Users ##
 
-  ## Auth ##
-  createAuthChallenge:
-    handler: src/api/auth.createAuthChallenge
-    role: SendSMSRole
-    events:
-      - httpApi:
-          path: /auth/create_auth_challenge
-          method: post
-
-  defineAuthChallenge:
-    handler: src/api/auth.defineAuthChallenge
-    events:
-      - httpApi:
-          path: /auth/define_auth_challenge
-          method: post
-
-  verifyAuthChallengeResponse:
-    handler: src/api/auth.verifyAuthChallengeResponse
-    events:
-      - httpApi:
-          path: /auth/verify_auth_challenge_response
-          method: post
-  ## Auth ##
+  # Users ##
 
   ## Messages ##
   get_messages:
@@ -150,7 +111,7 @@ functions:
           path: /folders/{id}
           method: delete
 
-  ## Folders ##
+  # ## Folders ##
 
   ## Messages in Folders ##
   delete_messages:
@@ -248,65 +209,18 @@ functions:
       - httpApi:
           path: /statistics/callsCountByDay
           method: get
-
-  get_messages_sent_count_by_2_dates:
-    handler: src/api/statistics.getMessagesSentCount
-    events:
-      - httpApi:
-          path: /statistics/messagesSentCount/{start_date}/{end_date}
-          method: get
-
-  get_messages_sent_count_by_start_date:
-    handler: src/api/statistics.getMessagesSentCount
-    events:
-      - httpApi:
-          path: /statistics/messagesSentCount/{start_date}
-          method: get
-
-  get_all_messages_sent_count:
-    handler: src/api/statistics.getMessagesSentCount
-    events:
-      - httpApi:
-          path: /statistics/messagesSentCount
-          method: get
-
-  get_calls_count_by_2_dates:
-    handler: src/api/statistics.getCallsCount
-    events:
-      - httpApi:
-          path: /statistics/callsCount/{start_date}/{end_date}
-          method: get
-
-  get_calls_count_by_start_date:
-    handler: src/api/statistics.getCallsCount
-    events:
-      - httpApi:
-          path: /statistics/callsCount/{start_date}
-          method: get
-
-  get_all_calls_count:
-    handler: src/api/statistics.getCallsCount
-    events:
-      - httpApi:
-          path: /statistics/callsCount
-          method: get
-
   ## Statistics ##
 
-resources:
-  Resources:
-    LambdaRole: ${file(./resource/LambdaRole.yml)}
-    SendSMSRole: ${file(./resource/SendSMSRole.yml)}
-    PostgreSqlRDSInstance:
-      Type: AWS::RDS::DBInstance
-      Properties:
-        MasterUsername: ${self:custom.USERNAME}
-        MasterUserPassword: ${self:custom.PASSWORD}
-        AllocatedStorage: 20
-        DBName: ${self:custom.DB_NAME}
-        DBInstanceClass: db.t3.micro
-        Engine: postgres
-        PubliclyAccessible: true
+  # Migration
+  migrate_database:
+    handler: src/api/migration/migrateDatabase.handler
+    events:
+      - httpApi:
+          path: /migrate
+          method: post
+# Migration
 
 plugins:
   - serverless-offline
+  - serverless-plugin-typescript
+  - serverless-prune-plugin

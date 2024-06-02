@@ -1,89 +1,57 @@
-import { v4 } from "uuid";
-import { runRequest } from "../common/request_wrapper";
-import { tables } from "../common/constants";
-import { knex } from "../common/request_wrapper";
-import { log } from "../common/log";
-import { now } from "../common/utils/date";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-export const createFolder = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
-    const { title, position } = JSON.parse(req.body);
-    const id = v4();
-    await knex(tables.folders).insert({
-      id,
+export const createFolder = async (req, context) => {
+  const { title, position } = JSON.parse(req.body);
+  return await prisma.folder.create({
+    data: {
       title,
+      position: position || 0,
       times_used: 0,
-      position: position ? position : 0,
-      user_id,
+      user_id: req.user_id,
       is_active: true,
-      created_at: now(),
-    });
-    return id;
+      created_at: new Date().toISOString(),
+    },
   });
+};
 
-export const updateFolder = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
-    const { id, title, position, is_active, times_used } = JSON.parse(req.body);
-    const folder_data = {
+export const updateFolder = async (req, context) => {
+  const { id, title, position, is_active, times_used } = JSON.parse(req.body);
+  await prisma.folder.update({
+    where: { id },
+    data: {
       title,
-      position: position ? position : 0,
+      position: position || 0,
       is_active,
       times_used,
-    };
-    const message_in_folder_data = { folder_id: id, is_active, user_id };
-    await knex(tables.folders).update(folder_data).where("id", id);
-    await knex(tables.messages_in_folders)
-      .update({ is_active })
-      .where("folder_id", id);
-
-    log(tables.folders, folder_data, user_id, knex);
-    log(tables.messages_in_folders, message_in_folder_data, user_id, knex);
+    },
   });
-// folder/:id
-export const deleteFolder = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
-    if (!req.pathParameters) {
-      throw Error("Folder id must be sent in path parameters!");
-    }
-    const { id } = req.pathParameters;
-    const is_active = false;
-    await knex.transaction(function (trx) {
-      knex(tables.folders)
-        .update({ is_active })
-        .where("id", id)
-        .transacting(trx)
-        .then(async () => {
-          await knex(tables.messages_in_folders)
-            .update({ is_active })
-            .where("folder_id", id)
-            .transacting(trx);
-        })
-        .then(trx.commit)
-        .catch(trx.rollback);
-    });
+};
 
-    log(tables.folders, { id, is_active }, user_id, knex);
-    log(
-      tables.messages_in_folders,
-      { folder_id: id, is_active },
-      user_id,
-      knex
-    );
+export const deleteFolder = async (req, context) => {
+  const { id } = req.pathParameters;
+  await prisma.folder.update({
+    where: { id },
+    data: {
+      is_active: false,
+    },
   });
+};
 
-export const getFolders = async (req, context) =>
-  runRequest(req, context, async (_, user_id) => {
-    const result = await knex(tables.folders)
-      .select("*")
-      .where("user_id", user_id);
-    return result;
+export const getFolders = async (req, context) => {
+  return await prisma.folder.findMany({
+    where: {
+      user_id: req.user_id,
+      is_active: true,
+    },
   });
+};
 
-export const getDeletedFolders = async (req, context) =>
-  runRequest(req, context, async (_, user_id) => {
-    const result = await knex(tables.folders)
-      .select("*")
-      .where("user_id", user_id)
-      .where("is_active", false);
-    return result;
+export const getDeletedFolders = async (req, context) => {
+  return await prisma.folder.findMany({
+    where: {
+      user_id: req.user_id,
+      is_active: false,
+    },
   });
+};

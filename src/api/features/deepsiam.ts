@@ -62,7 +62,7 @@ async function phoneCallsToMessagesMap(phone_calls) {
       const result = await prisma.message.findMany({
         where: {
           id: first_message_id,
-          userId: izik_user_id,
+          user_id: izik_user_id,
         },
       });
       const message = result[0];
