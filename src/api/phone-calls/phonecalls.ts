@@ -1,9 +1,9 @@
 import { v4 } from "uuid";
-import { knex, runRequest } from "../../common/request_wrapper";
-import { tables } from "../../common/constants";
+import { runRequest } from "../../common/request_wrapper";
 import { toDate, now } from "../../common/utils/date";
 import { prepareMessagesSent } from "./utils";
 import { sendPhonecalls } from "../features/deepsiam";
+import prisma from "../prismaClient";
 
 export const createPhoneCall = async (req, context) =>
   runRequest(req, context, async (req, user_id) => {
@@ -17,23 +17,22 @@ export const createPhoneCall = async (req, context) =>
       messages_sent,
       actual_end_date,
     } = JSON.parse(req.body);
-    const phone_call_id = v4();
-    await knex(tables.phone_calls)
-      .insert({
-        id: phone_call_id,
-        number,
-        contact_name,
-        start_date: toDate(start_date),
-        end_date: toDate(end_date),
-        actual_end_date: toDate(actual_end_date),
-        is_answered,
-        type,
-        user_id,
-        is_active: true,
-        created_at: now(),
-      })
-      .onConflict(["user_id", "start_date"])
-      .merge();
+
+      // Convert to prisma, camelCase, phoneCall table name
+      await prisma.phoneCall.create({
+        data: {
+          number,
+          contactName: contact_name,
+          startDate: toDate(start_date),
+          endDate: toDate(end_date),
+          actualEndDate: toDate(actual_end_date),
+          isAnswered: is_answered,
+          type,
+          userId: user_id,
+          isActive: true,
+          createdAt: now(),
+        }
+      });
     prepareMessagesSent(messages_sent, phone_call_id);
     await knex(tables.messages_sent)
       .insert(messages_sent)

@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "",
     "dependencies": {
+        "@prisma/client": "^5.14.0",
         "aws-lambda": "^1.0.7",
         "aws-sdk": "^2.1356.0",
         "axios": "^1.6.8",
@@ -23,9 +24,12 @@
         "login": "serverless login"
     },
     "devDependencies": {
+        "@types/node": "^20.13.0",
         "@types/qs": "^6.9.15",
         "@types/uuid": "^9.0.8",
+        "prisma": "^5.14.0",
         "serverless-offline": "^13.3.3",
+        "ts-node": "^10.9.2",
         "typescript": "^5.4.5"
     }
 }

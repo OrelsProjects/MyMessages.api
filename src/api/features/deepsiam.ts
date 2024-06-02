@@ -1,8 +1,7 @@
 import { formatToExtendedISO8601 } from "./utils";
+import prisma from "../prismaClient";
 import axios from "axios";
 import qs from "qs";
-import { knex } from "../../common/request_wrapper";
-import { tables } from "../../common/constants";
 
 const izik_user_id = "aec62020-877f-4f18-b9c2-3d767791d46b";
 
@@ -60,10 +59,12 @@ async function phoneCallsToMessagesMap(phone_calls) {
       }
       const first_message_id = messages_sent[0].message_id;
 
-      // find message with message_id = first_message_id
-      const result = await knex(tables.messages)
-        .select()
-        .where({ id: first_message_id, user_id: izik_user_id });
+      const result = await prisma.message.findMany({
+        where: {
+          id: first_message_id,
+          userId: izik_user_id,
+        },
+      });
       const message = result[0];
       if (!message) {
         console.log("Message not found for message_id", first_message_id);

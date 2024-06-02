@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model AppUser {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  user_id    String  @unique @map("user_id") @db.ObjectId
+  first_name String  @map("first_name")
+  last_name  String  @map("last_name")
+  email      String  @map("email")
+  number     String  @map("number")
+  gender     String  @map("gender")
+  is_active  Boolean @map("is_active")
+  created_at String  @map("created_at")
+
+  deleted_calls    DeletedCall[]
+  messages         Message[]
+  folders          Folder[]
+  messages_history MessagesHistory[]
+  settings_history SettingsHistory[]
+
+  @@map("app_users")
+}
+
+model FolderHistory {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  times_used Int
+  position   Int
+  user_id    String  @db.ObjectId
+  is_active  Boolean
+  created_at String
+  log_id     String
+  logged_at  String
+}
+
+model MessagesHistory {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  user_id     String  @db.ObjectId
+  title       String
+  short_title String
+  body        String
+  position    Int
+  times_used  Int
+  is_active   Boolean
+  created_at  String
+  log_id      String
+  logged_at   String
+
+  app_user AppUser? @relation(fields: [user_id], references: [id])
+}
+
+model MessageInFolderHistory {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  message_id String
+  folder_id  String
+  is_active  Boolean
+  created_at String
+  log_id     String
+  logged_at  String
+  user_id    String  @db.ObjectId
+}
+
+model SettingsHistory {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  key         String
+  value       String
+  user_id     String  @db.ObjectId
+  modified_at String
+  log_id      String
+  logged_at   String
+  enabled     Boolean
+
+  app_user AppUser? @relation(fields: [user_id], references: [id])
+}
+
+model DeletedCall {
+  id         String @id @default(auto()) @map("_id") @db.ObjectId
+  user_id    String @db.ObjectId
+  deleted_at String
+  number     String
+
+  app_user AppUser? @relation(fields: [user_id], references: [id])
+}
+
+model Folder {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  times_used Int
+  position   Int
+  user_id    String  @db.ObjectId
+  is_active  Boolean
+  created_at String
+
+  app_user AppUser? @relation(fields: [user_id], references: [id])
+}
+
+model Message {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  user_id     String  @db.ObjectId
+  title       String
+  short_title String
+  body        String
+  position    Int
+  times_used  Int
+  is_active   Boolean
+  created_at  String
+
+  app_user AppUser? @relation(fields: [user_id], references: [id])
+}
+
+model MessageInFolder {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  message_id String
+  folder_id  String
+  is_active  Boolean
+  created_at String
+}
+
+model MessageSent {
+  sent_at       String
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  message_id    String
+  phone_call_id String
+  is_active     Boolean
+  created_at    String
+}
+
+model Setting {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  key         String
+  value       String
+  user_id     String  @db.ObjectId
+  modified_at String
+  enabled     Boolean
+}
+
+model PhoneCall {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  number          String
+  start_date      String
+  end_date        String
+  type            String
+  is_answered     Boolean
+  user_id         String
+  is_active       Boolean
+  contact_name    String
+  created_at      String
+  actual_end_date String
+}
+
+// MONGO-MIGRATION-TABLES
+
+model AppUserMongo {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  user_id    String  @unique @db.ObjectId
+  first_name String
+  last_name  String
+  email      String
+  number     String
+  gender     String
+  is_active  Boolean
+  created_at String
+
+  deleted_calls    DeletedCallMongo[]
+  messages         MessageMongo[]
+  folders          FolderMongo[]
+  messages_history MessagesHistoryMongo[]
+  folders_history  FoldersHistoryMongo[]
+  settings_history SettingsHistoryMongo[]
+}
+
+model FoldersHistoryMongo {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  times_used Int
+  position   Int
+  user_id    String  @db.ObjectId
+  is_active  Boolean
+  created_at String
+  log_id     String
+  logged_at  String
+
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+  users_mongo_id String?
+}
+
+model MessagesHistoryMongo {
+  id             String  @id @default(auto()) @map("_id") @db.ObjectId
+  user_id        String  @db.ObjectId
+  title          String
+  short_title    String
+  body           String
+  position       Int
+  times_used     Int
+  is_active      Boolean
+  created_at     String
+  log_id         String
+  logged_at      String
+  users_mongo_id String?
+
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+}
+
+model MessagesInFoldersHistoryMongo {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  message_id String
+  folder_id  String
+  is_active  Boolean
+  created_at String
+  log_id     String
+  logged_at  String
+  user_id    String  @db.ObjectId
+}
+
+model SettingsHistoryMongo {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  key            String
+  value          String
+  user_id        String        @db.ObjectId
+  modified_at    String
+  log_id         String
+  logged_at      String
+  enabled        Boolean
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+  users_mongo_id String?
+}
+
+model DeletedCallMongo {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  user_id        String        @db.ObjectId
+  deleted_at     String
+  number         String
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+}
+
+model FolderMongo {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  title      String
+  times_used Int     @map("timesUsed")
+  position   Int
+  user_id    String  @map("userId") @db.ObjectId
+  is_active  Boolean @map("isActive")
+  created_at String  @map("createdAt")
+
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+  users_mongo_id String?       @map("usersMongoId")
+}
+
+model MessageMongo {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  user_id        String        @map("userId") @db.ObjectId
+  title          String
+  short_title    String        @map("shortTitle")
+  body           String
+  position       Int
+  times_used     Int           @map("timesUsed")
+  is_active      Boolean       @map("isActive")
+  created_at     String        @map("createdAt")
+  app_user_mongo AppUserMongo? @relation(fields: [user_id], references: [id])
+  users_mongo_id String?       @map("usersMongoId")
+}
+
+model MessagesInFoldersMongo {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  message_id String  @map("messageId")
+  folder_id  String  @map("folderId")
+  is_active  Boolean @map("isActive")
+  created_at String  @map("createdAt")
+}
+
+model MessagesSentMongo {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  sent_at       String
+  message_id    String  @map("messageId")
+  phone_call_id String  @map("phoneCallId")
+  is_active     Boolean @map("isActive")
+  created_at    String  @map("createdAt")
+}
+
+model SettingMongo {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  key         String
+  value       String
+  user_id     String  @map("userId") @db.ObjectId
+  modified_at String  @map("modifiedAt")
+  enabled     Boolean
+}
+
+model PhoneCallMongo {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  number          String
+  start_date      String
+  end_date        String
+  type            String
+  is_answered     Boolean
+  user_id         String
+  is_active       Boolean
+  contact_name    String
+  created_at      String
+  actual_end_date String
+}
+
+// MONGO-MIGRATION-TABLES
