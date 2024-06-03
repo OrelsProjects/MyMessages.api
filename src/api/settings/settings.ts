@@ -41,10 +41,11 @@ export const getSettings = async (req, context) =>
         },
       });
     } else {
-      return await prisma.settings.findMany({
+      const all_settings = await prisma.settings.findMany({
         where: {
           user_id,
         },
       });
+      return all_settings;
     }
   });

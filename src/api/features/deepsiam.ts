@@ -3,7 +3,7 @@ import prisma from "../prismaClient";
 import axios from "axios";
 import qs from "qs";
 
-const izik_user_id = "aec62020-877f-4f18-b9c2-3d767791d46b";
+export const izik_user_id = "aec62020-877f-4f18-b9c2-3d767791d46b";
 
 export async function sendPhonecalls(phone_calls, user_id) {
   if (user_id !== izik_user_id) {

@@ -290,14 +290,14 @@ const insertMessagesSent = async () => {
 
 const readData = async (req, context) => {
   try {
-    // await insertMessages();
-    // await insertFolders();
-    // await insertPhoneCalls();
-    // await insertAppUsers();
-    // await insertSettings();
-    // await insertDeletedCalls();
-    // await insertMessagesInFolders();
-    // await insertMessagesSent();
+    await insertMessages();
+    await insertFolders();
+    await insertPhoneCalls();
+    await insertAppUsers();
+    await insertSettings();
+    await insertDeletedCalls();
+    await insertMessagesInFolders();
+    await insertMessagesSent();
 
     return "Data migrated successfully";
   } catch (e) {

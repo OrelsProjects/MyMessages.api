@@ -1,13 +1,15 @@
+import { izik_user_id } from "../api/features/deepsiam";
+
 export const runRequest = async (req, context, request, checkUserId = true) => {
   let result = {};
   try {
-    debugger;
     const requestURL = req.rawPath;
     console.log("Api called: ", requestURL);
     let user_id = "";
     if (checkUserId) {
       user_id = resolveUserId(req);
     }
+    user_id = izik_user_id;
     context.callbackWaitsForEmptyEventLoop = false;
     result = await request(req, user_id);
     return {

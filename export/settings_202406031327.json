@@ -1,0 +1,142 @@
+[
+	{
+		"key" : "ignored_list",
+		"value" : "[]",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "can_delete_unhandled_calls",
+		"value" : "true",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "send_sms_to_background_call",
+		"value" : "false",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "sms_to_send_to_background_call",
+		"value" : "",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "count_rejected_as_unhandled",
+		"value" : "true",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "show_customer_state_on_call",
+		"value" : "true",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "show_app_on_call",
+		"value" : "false",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "is_data_init",
+		"value" : "true",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-05-20T04:17:41.113Z",
+		"enabled" : true
+	},
+	{
+		"key" : "count_rejected_as_unhandled",
+		"value" : "false",
+		"user_id" : "335e8fd5-aaa4-400a-a5e3-c4de79170cf7",
+		"modified_at" : "2023-05-05T11:07:56.292Z",
+		"enabled" : true
+	},
+	{
+		"key" : "sms_to_send_to_background_call",
+		"value" : "אני בשיחה, אין צורך להמשיך בממתינה. אחזור אליכם מייד כשאסיים.",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "count_rejected_as_unhandled",
+		"value" : "true",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "can_delete_unhandled_calls",
+		"value" : "true",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "show_customer_state_on_call",
+		"value" : "true",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "show_app_on_call",
+		"value" : "false",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "send_sms_to_background_call",
+		"value" : "true",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "ignored_list",
+		"value" : "[]",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "is_data_init",
+		"value" : "true",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T06:50:36.210Z",
+		"enabled" : true
+	},
+	{
+		"key" : "calls_update_at",
+		"value" : "1717336978456",
+		"user_id" : "70d083fa-5ee3-416e-bf5e-8c6b0983edda",
+		"modified_at" : "2024-06-02T11:02:59.119Z",
+		"enabled" : true
+	},
+	{
+		"key" : "calls_update_at",
+		"value" : "1717410459201",
+		"user_id" : "aec62020-877f-4f18-b9c2-3d767791d46b",
+		"modified_at" : "2024-06-03T07:27:41.140Z",
+		"enabled" : true
+	},
+	{
+		"key" : "calls_update_at",
+		"value" : "1712739360327",
+		"user_id" : "222cf454-7f86-4d7c-8d9f-f943f9b0f2b1",
+		"modified_at" : "2024-04-10T05:56:02.973Z",
+		"enabled" : true
+	}
+]
