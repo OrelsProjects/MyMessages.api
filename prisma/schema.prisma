@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -46,7 +47,8 @@ model Folder {
   is_active  Boolean
   created_at DateTime @default(now())
 
-  app_user AppUser? @relation(fields: [user_id], references: [user_id])
+  app_user          AppUser?          @relation(fields: [user_id], references: [user_id])
+  message_in_folder MessageInFolder[]
 
   @@map("folders")
 }
@@ -71,11 +73,12 @@ model Message {
 model MessageInFolder {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   message_id String   @db.ObjectId
-  folder_id  String
-  is_active  Boolean
+  folder_id  String   @db.ObjectId
+  is_active  Boolean  @default(true)
   created_at DateTime @default(now())
 
   message Message? @relation(fields: [message_id], references: [id])
+  folder  Folder?  @relation(fields: [folder_id], references: [id])
 
   @@unique([message_id, folder_id])
   @@map("messageInFolder")
@@ -109,18 +112,19 @@ model Settings {
 }
 
 model PhoneCall {
-  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
   number          String
-  start_date      DateTime?     @default(now())
-  end_date        DateTime?     @default(now())
-  actual_end_date DateTime?     @default(now())
+  start_date      DateTime? @default(now())
+  end_date        DateTime? @default(now())
+  actual_end_date DateTime? @default(now())
   type            String
   is_answered     Boolean
   user_id         String
   is_active       Boolean
   contact_name    String
-  created_at      DateTime      @default(now())
-  MessageSent     MessageSent[]
+  created_at      DateTime  @default(now())
+
+  messages_sent MessageSent[]
 
   @@map("phoneCalls")
 }

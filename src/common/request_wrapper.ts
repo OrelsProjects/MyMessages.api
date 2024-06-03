@@ -1,6 +1,9 @@
 export const runRequest = async (req, context, request, checkUserId = true) => {
   let result = {};
   try {
+    debugger;
+    const requestURL = req.rawPath;
+    console.log("Api called: ", requestURL);
     let user_id = "";
     if (checkUserId) {
       user_id = resolveUserId(req);

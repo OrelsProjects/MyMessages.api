@@ -9,14 +9,12 @@
     "debug": "SET SLS_DEBUG=* && node --inspect node_modules\\serverless\\bin\\serverless offline --stage dev",
     "debug_mac": "SLS_DEBUG=* && node --inspect node_modules/serverless/bi /serverless offline --stage dev",
     "build-prisma": "prisma generate && mkdir -p dist/prisma && cp -r node_modules/@prisma/client/runtime dist/prisma/",
-    "start": "serverless offline --stage dev",
+    "start": "serverless offline --stage dev --host 0.0.0.0",
     "deploy": "serverless prune -n 1 && serverless deploy --stage dev",
     "login": "serverless login"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
-    "aws-lambda": "^1.0.7",
-    "aws-sdk": "^2.1632.0",
     "axios": "^1.7.2",
     "fs": "^0.0.1-security",
     "mongodb": "^6.7.0",

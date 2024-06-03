@@ -1,13 +1,13 @@
-import { v4 } from "uuid";
 import { runRequest } from "../../common/request_wrapper";
 import { toDate, now } from "../../common/utils/date";
 import { prepareMessagesSent } from "./utils";
 import { sendPhonecalls } from "../features/deepsiam";
 import { Message } from "@prisma/client";
 import prisma from "../prismaClient";
+import { ObjectId } from "mongodb";
 
 export const createPhoneCall = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
+  runRequest(req, context, async (req, user_id: string) => {
     const {
       number,
       contact_name,
@@ -47,15 +47,26 @@ export const createPhoneCall = async (req, context) =>
   });
 
 export const createPhoneCalls = async (req, context) =>
-  runRequest(req, context, async (req, user_id) => {
+  runRequest(req, context, async (req, user_id: string) => {
     const phone_calls = JSON.parse(req.body);
     if (!Array.isArray(phone_calls))
       throw Error("Not array exception in phoneCalls");
 
     const phone_calls_array = [];
     let messages_sent_array = [];
+    // remove all phone calls with the same start_date
+    const phone_calls_filtered = phone_calls.reduce((acc, phone_call) => {
+      const start_date = phone_call.start_date;
+      const existing_phone_call = acc.find(
+        (pc) => pc.start_date === start_date
+      );
+      if (!existing_phone_call) {
+        acc.push(phone_call);
+      }
+      return acc;
+    });
 
-    phone_calls.forEach((phone_call) => {
+    phone_calls_filtered.forEach((phone_call) => {
       const {
         number,
         contact_name,
@@ -67,11 +78,11 @@ export const createPhoneCalls = async (req, context) =>
         actual_end_date,
       } = phone_call;
 
-      const phone_call_id = v4();
+      const phone_call_id = new ObjectId().toString();
       const start_date_formatted = toDate(start_date);
       const end_date_formatted = toDate(end_date);
       const actual_end_date_formatted = toDate(actual_end_date);
-
+      
       phone_calls_array.push({
         id: phone_call_id,
         number,
@@ -125,7 +136,7 @@ export const createPhoneCalls = async (req, context) =>
     });
 
     try {
-      await sendPhonecalls(phone_calls, user_id);
+      await sendPhonecalls(phone_calls_filtered, user_id);
     } catch (e) {}
 
     return phone_call_ids;

@@ -118,7 +118,7 @@ functions:
     handler: src/api/messagesInFolders.deleteMessagesFromFolder
     events:
       - httpApi:
-          path: /messagesInFolders
+          path: /messagesInFolders/{folder_id}
           method: delete
 
   ## Messages in Folders ##
@@ -219,6 +219,10 @@ functions:
           path: /migrate
           method: post
 # Migration
+
+resources:
+  Resources:
+    LambdaRole: ${file(./resource/LambdaRole.yml)}
 
 plugins:
   - serverless-offline
