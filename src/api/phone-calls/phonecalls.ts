@@ -55,16 +55,15 @@ export const createPhoneCalls = async (req, context) =>
     const phone_calls_array = [];
     let messages_sent_array = [];
     // remove all phone calls with the same start_date
-    const phone_calls_filtered = phone_calls.reduce((acc, phone_call) => {
-      const start_date = phone_call.start_date;
-      const existing_phone_call = acc.find(
-        (pc) => pc.start_date === start_date
-      );
-      if (!existing_phone_call) {
-        acc.push(phone_call);
-      }
-      return acc;
-    });
+    const phone_calls_filtered = phone_calls.filter(
+      (phone_call, index, self) =>
+        index ===
+        self.findIndex(
+          (t) =>
+            t.start_date === phone_call.start_date &&
+            t.number === phone_call.number
+        )
+    );
 
     phone_calls_filtered.forEach((phone_call) => {
       const {
@@ -82,7 +81,7 @@ export const createPhoneCalls = async (req, context) =>
       const start_date_formatted = toDate(start_date);
       const end_date_formatted = toDate(end_date);
       const actual_end_date_formatted = toDate(actual_end_date);
-      
+
       phone_calls_array.push({
         id: phone_call_id,
         number,
