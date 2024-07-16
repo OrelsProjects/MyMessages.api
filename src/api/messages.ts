@@ -22,7 +22,9 @@ export const createMessage = async (req, context) =>
     }
 
     const messagesData: (Message & { folder_id: string })[] = messages.map(
-      (message): Omit<Message, "id"> & { folder_id: string } => ({
+      (
+        message
+      ): Omit<Message, "id" | "old_message_id"> & { folder_id: string } => ({
         title: message.title,
         short_title: message.short_title,
         body: message.body,
@@ -76,37 +78,31 @@ export const getMessages = async (req, context) =>
     req,
     context,
     async (req, user_id: string): Promise<GetMessagesResponse> => {
-      console.log("test");
-      const messages = await prisma.message.findMany({
+      const messages = await prisma.messageInFolder.findMany({
         where: {
-          user_id,
-        },
-        include: {
-          messages_in_folders: true,
-        },
-      });
-      const messagesInFolders = await prisma.messageInFolder.findMany({
-        where: {
-          message_id: {
-            in: messages.map((message) => message.id),
+          is_active: true,
+          folder: {
+            user_id,
+            is_active: true,
+          },
+          message: {
+            user_id,
+            is_active: true,
           },
         },
+        include: {
+          message: true,
+          folder: true,
+        },
       });
-      const response: GetMessagesResponse = messages
-        .filter((message) => {
-          const messageInFolder = messagesInFolders.find(
-            (messageInFolder) => messageInFolder.message_id === message.id
-          );
-          return !!messageInFolder;
-        })
-        .map((message) => {
-          const messageInFolder = messagesInFolders.find(
-            (messageInFolder) => messageInFolder.message_id === message.id
-          );
+      
+      const response = messages
+        .map((message_in_folder) => {
+          const message = message_in_folder.message;
           return {
-            messages_in_folder_id: messageInFolder.id,
-            folder_id: messageInFolder.folder_id,
-            message_id: message.id,
+            messages_in_folder_id: message_in_folder.id,
+            folder_id: message_in_folder.folder_id,
+            message_id: message_in_folder.message_id,
             title: message.title,
             short_title: message.short_title,
             body: message.body,
@@ -114,7 +110,9 @@ export const getMessages = async (req, context) =>
             times_used: message.times_used,
             is_active: message.is_active,
           };
-        });
+        })
+        .sort((a, b) => b.times_used - a.times_used); // sort by times_used  descending
+      
       return response;
     }
   );

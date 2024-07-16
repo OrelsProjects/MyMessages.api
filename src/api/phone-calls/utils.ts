@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import { v4 } from "uuid";
 import { now, toDate } from "../../common/utils/date";
 
 export const prepareMessagesSent = (messages_sent, phone_call_id) => {
@@ -6,7 +6,7 @@ export const prepareMessagesSent = (messages_sent, phone_call_id) => {
     messages_sent = [];
   } else {
     messages_sent.map((value) => {
-      value["id"] = new ObjectId().toString();
+      value["id"] = v4();
       value["is_active"] = true;
       value["phone_call_id"] = phone_call_id;
       value["sent_at"] = toDate(value["sent_at"]);

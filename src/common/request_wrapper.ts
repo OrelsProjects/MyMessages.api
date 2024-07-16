@@ -5,11 +5,13 @@ export const runRequest = async (req, context, request, checkUserId = true) => {
   try {
     const requestURL = req.rawPath;
     console.log("Api called: ", requestURL);
+    console.log("Request body: ", req.body);
+    
     let user_id = "";
     if (checkUserId) {
       user_id = resolveUserId(req);
     }
-    user_id = izik_user_id;
+
     context.callbackWaitsForEmptyEventLoop = false;
     result = await request(req, user_id);
     return {

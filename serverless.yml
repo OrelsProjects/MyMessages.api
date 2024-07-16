@@ -1,5 +1,8 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: ideologicalperch
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: mymessages
 service: mymessages-api
-frameworkVersion: "3"
 configValidationMode: error
 
 custom:
@@ -13,9 +16,18 @@ custom:
     dev: ${file(secrets_dev.json)}
 
   serverless-offline:
-    httpPort: 4000
-    websocketPort: 4001
-    lambdaPort: 4002
+    httpPort: 4871
+    websocketPort: 4872
+    lambdaPort: 4873
+
+build:
+  esbuild: false
+
+package:
+  exclude:
+    - node_modules/aws-sdk/**
+    - node_modules/@aws-sdk/**
+    - node_modules/@types/aws-sdk/**
 
 provider:
   name: aws
@@ -163,6 +175,22 @@ functions:
           method: post
   ## Phone Calls ##
 
+  ## Ongoing Calls ##
+  create_ongoing_call:
+    handler: src/api/ongoing-calls/handler.createOngoingCall
+    events:
+      - httpApi:
+          path: /ongoing-call
+          method: post
+
+  get_latest_ongoing_call:
+    handler: src/api/ongoing-calls/handler.getLatestOngoingCall
+    events:
+      - httpApi:
+          path: /ongoing-call/latest
+          method: get
+  ## Ongoing Calls ##
+
   ## Settings ##
   get_settings:
     handler: src/api/settings/settings.getSettings
@@ -212,12 +240,12 @@ functions:
   ## Statistics ##
 
   # Migration
-  migrate_database:
-    handler: src/api/migration/migrateDatabase.handler
-    events:
-      - httpApi:
-          path: /migrate
-          method: post
+  # migrate_database:
+  #   handler: src/api/migration/migrateDatabase.handler
+  #   events:
+  #     - httpApi:
+  #         path: /migrate
+  #         method: post
 # Migration
 
 resources:
@@ -225,6 +253,7 @@ resources:
     LambdaRole: ${file(./resource/LambdaRole.yml)}
 
 plugins:
-  - serverless-offline
+  # - serverless-offline
   - serverless-plugin-typescript
-  - serverless-prune-plugin
+  # - serverless-prune-plugin
+  # - serverless-plugin-include-dependencies

@@ -4,7 +4,7 @@ import { prepareMessagesSent } from "./utils";
 import { sendPhonecalls } from "../features/deepsiam";
 import { Message } from "@prisma/client";
 import prisma from "../prismaClient";
-import { ObjectId } from "mongodb";
+import { v4 } from "uuid";
 
 export const createPhoneCall = async (req, context) =>
   runRequest(req, context, async (req, user_id: string) => {
@@ -41,6 +41,7 @@ export const createPhoneCall = async (req, context) =>
         ...message,
         phone_call_id: phone_call_id.id,
       })),
+      skipDuplicates: true,
     });
 
     return phone_call_id;
@@ -54,18 +55,8 @@ export const createPhoneCalls = async (req, context) =>
 
     const phone_calls_array = [];
     let messages_sent_array = [];
-    // remove all phone calls with the same start_date
-    const phone_calls_filtered = phone_calls.filter(
-      (phone_call, index, self) =>
-        index ===
-        self.findIndex(
-          (t) =>
-            t.start_date === phone_call.start_date &&
-            t.number === phone_call.number
-        )
-    );
 
-    phone_calls_filtered.forEach((phone_call) => {
+    phone_calls.forEach((phone_call) => {
       const {
         number,
         contact_name,
@@ -77,7 +68,7 @@ export const createPhoneCalls = async (req, context) =>
         actual_end_date,
       } = phone_call;
 
-      const phone_call_id = new ObjectId().toString();
+      const phone_call_id = v4();
       const start_date_formatted = toDate(start_date);
       const end_date_formatted = toDate(end_date);
       const actual_end_date_formatted = toDate(actual_end_date);
@@ -106,6 +97,7 @@ export const createPhoneCalls = async (req, context) =>
           // Insert phone_calls_array into phone_calls collection
           await prisma.phoneCall.createMany({
             data: phone_calls_array,
+            skipDuplicates: true,
           });
 
           // Filter messages_sent_array based on inserted phone_call_id
@@ -119,15 +111,18 @@ export const createPhoneCalls = async (req, context) =>
           if (messages_sent_array.length > 0) {
             await prisma.messageSent.createMany({
               data: messages_sent_array,
+              skipDuplicates: true,
             });
           }
         });
 
         // Resolve with phone_call_ids
+
         const phone_call_ids =
           phone_calls_array.map((phone_call) => phone_call.id) ?? [];
         resolve(phone_call_ids);
       } catch (err) {
+        console.log(err);
         reject(err);
       } finally {
         await prisma.$disconnect();
@@ -135,8 +130,10 @@ export const createPhoneCalls = async (req, context) =>
     });
 
     try {
-      await sendPhonecalls(phone_calls_filtered, user_id);
-    } catch (e) {}
+      await sendPhonecalls(phone_calls, user_id);
+    } catch (e) {
+      console.error(e);
+    }
 
     return phone_call_ids;
   });

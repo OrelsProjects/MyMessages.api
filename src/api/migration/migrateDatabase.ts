@@ -8,48 +8,24 @@ import {
   MessageSent,
   MessageInFolder,
 } from "@prisma/client";
-import fs from "fs";
-import { ObjectId } from "mongodb";
 import * as data from "../../../export";
 import { runRequest } from "../../common/request_wrapper";
 import prisma from "../prismaClient";
 
-const prepareMessages = (data: Message[]): Message[] => {
-  const oldIdToNewIdMap = new Map<string, string>();
-  const messagesNoId = data.map((message) => {
-    message.created_at = message.created_at
-      ? new Date(message.created_at)
-      : new Date();
-    const newId = new ObjectId();
-    if (message.is_active) {
-      oldIdToNewIdMap.set(message.id, newId.toHexString());
-    }
-    const { id, ...rest } = message;
-    return {
-      ...rest,
-      id: newId.toHexString(),
-    };
-  });
-  fs.writeFileSync(
-    "./oldIdToNewIdMap_messages.json",
-    JSON.stringify([...oldIdToNewIdMap])
-  );
-  return messagesNoId.filter((it) => it.is_active);
-};
-
 const insertMessages = async () => {
+  await prisma.message.deleteMany();
   const messages = data.messages as any as Message[];
-  try {
-    await prisma.message.createMany({
-      data: prepareMessages(messages),
-    });
-  } catch (e) {
-    console.log(e);
-  }
+  //Remove messages with user_id = "70d083fa-5ee3-416e-bf5e-8c6b0983edda";
+  const allMessages = messages.filter(
+    (message) => message.user_id !== "70d083fa-5ee3-416e-bf5e-8c6b0983edda"
+  );
+
+  await prisma.message.createMany({
+    data: allMessages,
+  });
 };
 
 const preparePhoneCalls = (data: PhoneCall[]): PhoneCall[] => {
-  const oldIdToNewIdMap = new Map<string, string>();
   const phoneCallsNoId = data.map((phoneCall) => {
     phoneCall.created_at = phoneCall.created_at
       ? new Date(phoneCall.created_at)
@@ -63,20 +39,8 @@ const preparePhoneCalls = (data: PhoneCall[]): PhoneCall[] => {
     phoneCall.actual_end_date = phoneCall.actual_end_date
       ? new Date(phoneCall.actual_end_date)
       : null;
-
-    const { id, ...rest } = phoneCall;
-    const newId = new ObjectId();
-    oldIdToNewIdMap.set(id, newId.toHexString());
-    return {
-      ...rest,
-      id: newId.toHexString(),
-    };
+    return phoneCall;
   });
-
-  fs.writeFileSync(
-    "./oldIdToNewIdMap_phonecalls.json",
-    JSON.stringify([...oldIdToNewIdMap])
-  );
   return phoneCallsNoId;
 };
 
@@ -98,8 +62,8 @@ const prepareSettings = (data: Settings[]): Omit<Settings, "id">[] => {
     setting.modified_at = setting.modified_at
       ? new Date(setting.modified_at)
       : new Date();
-    const { id, ...rest } = setting;
-    return rest;
+
+    return setting;
   });
   return settingsNoId;
 };
@@ -116,53 +80,27 @@ const insertSettings = async () => {
   }
 };
 
-const prepareFolders = (data: Folder[]): Folder[] => {
-  const oldIdToNewIdMap = new Map<string, string>();
-  const foldersNoId = data.map((folder) => {
-    folder.created_at = folder.created_at
-      ? new Date(folder.created_at)
-      : new Date();
-
-    const newId = new ObjectId();
-    if (folder.is_active) {
-      oldIdToNewIdMap.set(folder.id, newId.toHexString());
-    }
-
-    const { id, ...rest } = folder;
-    return {
-      ...rest,
-      id: newId.toHexString(),
-    };
-  });
-
-  fs.writeFileSync(
-    "./oldIdToNewIdMap_folders.json",
-    JSON.stringify([...oldIdToNewIdMap])
-  );
-  return foldersNoId.filter((it) => it.is_active);
-};
-
 const insertFolders = async () => {
   const folders = data.folders as any as Folder[];
-  const preparedFolders = prepareFolders(folders);
+  const filteredFolders = folders.filter(
+    (folder) => folder.user_id !== "70d083fa-5ee3-416e-bf5e-8c6b0983edda"
+  );
+  await prisma.folder.deleteMany();
   try {
     await prisma.folder.createMany({
-      data: preparedFolders,
+      data: filteredFolders,
     });
   } catch (e) {
     console.log(e);
   }
 };
 
-const prepareDeletedCalls = (
-  data: DeletedCall[]
-): Omit<DeletedCall, "id">[] => {
+const prepareDeletedCalls = (data: DeletedCall[]): DeletedCall[] => {
   const deletedCallsNoId = data.map((deletedCall) => {
     deletedCall.deleted_at = deletedCall.deleted_at
       ? new Date(deletedCall.deleted_at)
       : new Date();
-    const { id, ...rest } = deletedCall;
-    return rest;
+    return deletedCall;
   });
   return deletedCallsNoId;
 };
@@ -179,88 +117,46 @@ const insertDeletedCalls = async () => {
   }
 };
 
-const prepareAppUsers = (data: AppUser[]): Omit<AppUser, "id">[] => {
-  const appUsersNoId = data.map((appUser) => {
-    appUser.created_at = appUser.created_at
-      ? new Date(appUser.created_at)
-      : new Date();
-    const { id, ...rest } = appUser;
-    return {
-      ...rest,
-      user_id: id,
-    };
-  });
-  return appUsersNoId;
-};
-
 const insertAppUsers = async () => {
   const appUsers = data.users as any as AppUser[];
-  const preparedAppUsers = prepareAppUsers(appUsers);
-  try {
-    await prisma.appUser.createMany({
-      data: preparedAppUsers,
-    });
-  } catch (e) {
-    console.log(e);
-  }
-};
-
-const prepareMessagesInFolders = (
-  data: MessageInFolder[]
-): Omit<MessageInFolder, "id">[] => {
-  const oldMessages = fs.readFileSync(
-    "./oldIdToNewIdMap_messages.json",
-    "utf8"
-  );
-  const oldFolders = fs.readFileSync("./oldIdToNewIdMap_folders.json", "utf8");
-  const oldMessagesMap = new Map(JSON.parse(oldMessages));
-  const oldFoldersMap = new Map(JSON.parse(oldFolders)) as Map<string, string>;
-
-  const messagesInFoldersNoId = data.map((messageInFolder) => {
-    const new_created_at = messageInFolder.created_at
-      ? new Date(messageInFolder.created_at)
-      : new Date();
-    const { id, ...rest } = messageInFolder;
-
-    const newObject = {
-      ...rest,
-      created_at: new_created_at,
-      message_id: oldMessagesMap.get(messageInFolder.message_id) as string,
-      folder_id: oldFoldersMap.get(messageInFolder.folder_id) as string,
-    };
-    return newObject;
+  
+  await prisma.appUser.createMany({
+    data: appUsers,
   });
-
-  return messagesInFoldersNoId.filter((it) => it.folder_id && it.message_id);
 };
 
 const insertMessagesInFolders = async () => {
   const messagesInFolders = data.messagesInFolder as any as MessageInFolder[];
-  const preparedMessagesInFolders = prepareMessagesInFolders(messagesInFolders);
+  const allMessagesInFolders = messagesInFolders.map((messageInFolder) => {
+    const newDate = new Date(messageInFolder.created_at);
+    return {
+      ...messageInFolder,
+      created_at: newDate,
+    };
+  });
 
-  try {
-    await prisma.messageInFolder.createMany({
-      data: preparedMessagesInFolders,
-    });
-  } catch (e) {
-    console.log(e);
+  const messages = await prisma.message.findMany();
+  const messagesInFoldersThatHaveMessageId = allMessagesInFolders.filter(
+    (messageInFolder) =>
+      messages.find((message) => message.id === messageInFolder.message_id)
+  );
+  let id = "";
+  let i = 0;
+  await prisma.messageInFolder.deleteMany();
+  for (const messageInFolder of messagesInFoldersThatHaveMessageId) {
+    try {
+      id = messageInFolder.id;
+      console.log(i++ + "/" + messagesInFoldersThatHaveMessageId.length);
+      await prisma.messageInFolder.create({
+        data: messageInFolder,
+      });
+    } catch (e) {
+      console.log(id);
+    }
   }
 };
 
-const prepareMessagesSent = (
-  data: MessageSent[]
-): Omit<MessageSent, "id">[] => {
-  const oldMessages = fs.readFileSync(
-    "./oldIdToNewIdMap_messages.json",
-    "utf8"
-  );
-  const oldPhonecalls = fs.readFileSync(
-    "./oldIdToNewIdMap_phonecalls.json",
-    "utf8"
-  );
-  const oldMessagesMap = new Map(JSON.parse(oldMessages));
-  const oldPhonecallsMap = new Map(JSON.parse(oldPhonecalls));
-
+const prepareMessagesSent = (data: MessageSent[]): MessageSent[] => {
   const messagesSentNoId = data.map((messageSent) => {
     messageSent.created_at = messageSent.created_at
       ? new Date(messageSent.created_at)
@@ -268,35 +164,46 @@ const prepareMessagesSent = (
     messageSent.sent_at = messageSent.sent_at
       ? new Date(messageSent.sent_at)
       : null;
-    const { id, ...rest } = messageSent;
-    return {
-      ...rest,
-      id: new ObjectId().toHexString(),
-      message_id: oldMessagesMap.get(messageSent.message_id) as string,
-      phone_call_id: oldPhonecallsMap.get(messageSent.phone_call_id) as string,
-    };
+    return messageSent;
   });
-  return messagesSentNoId.filter((it) => it.message_id && it.phone_call_id);
+  return messagesSentNoId;
 };
 
 const insertMessagesSent = async () => {
   const messagesSent = data.messagesSent as any as MessageSent[];
   const preparedMessagesSent = prepareMessagesSent(messagesSent);
-  debugger;
+  const messages = await prisma.message.findMany();
+  const messagesSentThatHaveMessageId = preparedMessagesSent.filter(
+    (messageSent) =>
+      messages.find((message) => message.id === messageSent.message_id)
+  );
+  const phoneCalls = await prisma.phoneCall.findMany();
+  const phoneCallIdToPhoneCall = phoneCalls.reduce((acc, phoneCall) => {
+    acc[phoneCall.id] = phoneCall;
+    return acc;
+  });
+  const messagesSentThatHavePhoneCallId = messagesSentThatHaveMessageId.filter(
+    (messageSent) => {
+      const phoneCall = phoneCallIdToPhoneCall[messageSent.phone_call_id];
+      return phoneCall !== undefined;
+    }
+  );
+  
   await prisma.messageSent.createMany({
-    data: preparedMessagesSent,
+    data: messagesSentThatHavePhoneCallId,
+    skipDuplicates: true,
   });
 };
 
 const readData = async (req, context) => {
   try {
-    await insertMessages();
-    await insertFolders();
-    await insertPhoneCalls();
-    await insertAppUsers();
-    await insertSettings();
-    await insertDeletedCalls();
-    await insertMessagesInFolders();
+    // await insertAppUsers();
+    // await insertMessages();
+    // await insertFolders();
+    // await insertMessagesInFolders();
+    // await insertSettings();
+    // await insertPhoneCalls();
+    // await insertDeletedCalls();
     await insertMessagesSent();
 
     return "Data migrated successfully";

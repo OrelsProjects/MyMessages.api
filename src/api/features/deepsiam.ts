@@ -1,7 +1,7 @@
 import { formatToExtendedISO8601 } from "./utils";
 import prisma from "../prismaClient";
-import axios from "axios";
 import qs from "qs";
+import moment from "moment";
 
 export const izik_user_id = "aec62020-877f-4f18-b9c2-3d767791d46b";
 
@@ -30,7 +30,6 @@ export async function sendPhonecalls(phone_calls, user_id) {
       let config = {
         method: "post",
         maxBodyLength: Infinity,
-        url: `${process.env.FEATURE_DEEPSIAM_BASE_URL}/register-call`,
         headers: {
           Token: process.env.FEATURE_DEEPSIAM_API_KEY,
           "Content-Type": "application/x-www-form-urlencoded",
@@ -41,14 +40,23 @@ export async function sendPhonecalls(phone_calls, user_id) {
         ...config,
         messageSent: JSON.stringify(message_title),
       });
-      await axios.request(config);
+      await fetch(
+        `${process.env.FEATURE_DEEPSIAM_BASE_URL}/register-call`,
+        config
+      );
     } catch (error) {
       console.error("Error sending phonecall to DeepSiam", error);
     }
   }
 }
 
-async function phoneCallsToMessagesMap(phone_calls) {
+async function phoneCallsToMessagesMap(phone_calls): Promise<
+  {
+    phone_number: number;
+    message_title: string;
+    start_date: string;
+  }[]
+> {
   const map = [];
   for (const call of phone_calls) {
     try {
@@ -70,10 +78,11 @@ async function phoneCallsToMessagesMap(phone_calls) {
         console.log("Message not found for message_id", first_message_id);
         continue;
       }
+      const israel_start_date = moment(call.start_date).utcOffset(3);
       map.push({
         phone_number: number,
         message_title: message.title,
-        start_date: call.start_date,
+        start_date: israel_start_date,
       });
     } catch (error) {
       console.error("Error processing phonecall to message map", error);
